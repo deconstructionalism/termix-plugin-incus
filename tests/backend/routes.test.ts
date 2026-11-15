@@ -96,6 +96,39 @@ afterEach(async () => {
 
 const VERSION = "Client version: 7.0.1\nServer version: 7.0.1\n";
 
+describe("GET /summary", () => {
+  it("counts each enabled host's instances", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      answer: { stdout: listJson },
+    });
+    const { status, body } = await get("/summary");
+    expect(status).toBe(200);
+    expect(body.hosts).toEqual([
+      {
+        id: 1,
+        name: "homebrain",
+        ok: true,
+        total: 4,
+        running: 3,
+        stopped: 1,
+        frozen: 0,
+      },
+    ]);
+  });
+
+  it("says which host didn't answer", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      answer: { code: 1, stderr: "Error: not reachable" },
+    });
+    expect((await get("/summary")).body.hosts[0]).toMatchObject({
+      ok: false,
+      error: "Error: not reachable",
+    });
+  });
+});
+
 describe("GET /hosts", () => {
   it("lists only hosts with Incus turned on", async () => {
     const get = await start({

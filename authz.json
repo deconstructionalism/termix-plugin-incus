@@ -117,6 +117,12 @@
       "destructive": true,
       "allowed": "any",
       "note": "Runs through Termix operations, which check incus.operate and edit access; needs a real host"
+    },
+    "GET /plugin-api/incus/summary": {
+      "access": "user",
+      "permission": "incus.read",
+      "filtered": true,
+      "note": "Counts only for hosts the caller can see that have Incus turned on"
     }
   }
 }

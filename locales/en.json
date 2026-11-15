@@ -36,10 +36,10 @@
       },
       "level": {
         "label": "What's allowed",
-        "description": "Each choice includes the ones above it. People also need the matching permission, and a higher permission includes the lower ones.",
-        "read": "Read only: see instances, processes, logs and details",
-        "operate": "Read and operate: also start, stop, restart, freeze and snapshot",
-        "manage": "Read, operate and manage: also create, delete, rename and edit config"
+        "description": "Each choice includes the ones above it. Read only: instances, processes, logs and details. Read and operate: also start, stop, restart, freeze and snapshot. Read, operate and manage: also create, delete, rename and edit config. People also need the matching permission, and a higher permission includes the lower ones.",
+        "read": "Read only",
+        "operate": "Read and operate",
+        "manage": "Read, operate and manage"
       },
       "protected": {
         "label": "Protected instances",
@@ -236,5 +236,18 @@
       "description": "It can't be brought back."
     },
     "snapshotHint": "Kept for 7 days. On Incus's dir storage driver a snapshot is a full copy of the instance: as much space again, and it can take a while for a large instance."
+  },
+  "companion": {
+    "title": "Incus",
+    "empty": "No instances.",
+    "open": "Open Incus",
+    "off": "Incus isn't turned on for this host."
+  },
+  "card": {
+    "title": "Incus",
+    "empty": "No hosts have Incus turned on.",
+    "running": "{{running}} of {{total}} running",
+    "failed": "Incus didn't answer",
+    "loading": "Asking each host's Incus…"
   }
 }

@@ -15,5 +15,8 @@
 - Operate: Start, Stop, Restart, Freeze and Unfreeze buttons, and taking, restoring and deleting snapshots (kept 7 days by default), on hosts at Read and operate or above, for people with Operate. Stop, Restart, Freeze, Restore and Delete ask first, and protected instances only offer Start and Unfreeze. Each action is written to Termix's audit log. They're also declared as Termix operations for the palette and automations, which work once Termix can hand operations to a plugin process.
 - Levels and permissions are a ladder, and say so: Manage includes Operate, which includes Read. Shells stay separate.
 - Frozen instances: a container's processes still show, marked paused; logs and shells wait until it's unfrozen.
+- A panel beside a host's terminal listing its instances with state, CPU and memory, and a link to the Incus tab.
+- A dashboard card with each host's running instances.
+- Shorter labels for the host level, with the details in its description.
 - The list's count column is Tasks: Incus counts processes and their threads.
 - VMs without the Incus agent show "no agent" where Incus can't measure, and disks the storage doesn't measure show "not reported".

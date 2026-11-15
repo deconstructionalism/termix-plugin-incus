@@ -476,6 +476,48 @@ export function registerRoutes(
       });
     },
   );
+
+  /**
+   * @openapi
+   * /plugin-api/incus/summary:
+   *   get:
+   *     summary: For each host with Incus on that the user can see, how many instances run
+   *     tags:
+   *       - Incus
+   *     responses:
+   *       200:
+   *         description: Each host's counts, or why its Incus didn't answer
+   *       403:
+   *         description: No permission to read Incus
+   */
+  router.get("/summary", async (_req: Request, res: Response) => {
+    await answer(res, async () => {
+      const hosts = [];
+      for (const host of await ctx.hosts.list()) {
+        const settings = await readHostSettings(ctx, host.id);
+        if (!settings.enabled) continue;
+        const name = host.name || `${host.username}@${host.ip}`;
+        try {
+          const rows = await lists.get(host.id, settings);
+          const count = (status: string) =>
+            rows.filter((r) => r.status === status).length;
+          hosts.push({
+            id: host.id,
+            name,
+            ok: true,
+            total: rows.length,
+            running: count("Running"),
+            stopped: count("Stopped"),
+            frozen: count("Frozen"),
+          });
+        } catch (error) {
+          if (!(error instanceof ListError)) throw error;
+          hosts.push({ id: host.id, name, ok: false, error: error.message });
+        }
+      }
+      return { hosts };
+    });
+  });
 }
 
 export function parseVersion(text: string): {

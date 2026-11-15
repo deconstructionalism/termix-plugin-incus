@@ -54,9 +54,21 @@ async function show(data: unknown) {
 }
 
 describe(`${manifest.id} activate`, () => {
-  it("registers the tab", async () => {
+  it("registers the tab, a terminal panel and a dashboard card", async () => {
     rendered = await renderWithApp(plugin, { manifest, locales });
     expect(rendered.registered.tabs()).toEqual(["incus"]);
+    const registered = rendered.registered as unknown as Record<
+      string,
+      () => unknown[]
+    >;
+    if (registered.companions) {
+      expect(JSON.stringify(registered.companions())).toContain("incus");
+    }
+    if (registered.dashboardCards) {
+      expect(JSON.stringify(registered.dashboardCards())).toContain(
+        "incus-hosts",
+      );
+    }
   });
 
   it("lists the host's instances", async () => {

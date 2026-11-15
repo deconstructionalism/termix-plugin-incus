@@ -1,0 +1,85 @@
+import { useEffect, useState } from "react";
+import {
+  useTranslation,
+  type TermixApp,
+} from "@termix-ssh/plugin-sdk/frontend";
+import {
+  EmptyState,
+  LoadingState,
+  NoticePanel,
+} from "@termix-ssh/plugin-sdk/ui";
+import { Boxes } from "lucide-react";
+
+type HostSummary =
+  | {
+      id: number;
+      name: string;
+      ok: true;
+      total: number;
+      running: number;
+      stopped: number;
+      frozen: number;
+    }
+  | { id: number; name: string; ok: false; error: string };
+
+// running instances per host, refreshed every minute while showing
+export function createCard(app: TermixApp) {
+  return function IncusHostsCard() {
+    const { t } = useTranslation();
+    const [hosts, setHosts] = useState<HostSummary[] | null>(null);
+    const [failed, setFailed] = useState(false);
+
+    useEffect(() => {
+      let live = true;
+      const load = async () => {
+        try {
+          const { data } = await app.api.get<{ hosts: HostSummary[] }>(
+            "/summary",
+          );
+          if (live) {
+            setHosts(data.hosts);
+            setFailed(false);
+          }
+        } catch {
+          if (live) setFailed(true);
+        }
+      };
+      void load();
+      const timer = setInterval(() => void load(), 60_000);
+      return () => {
+        live = false;
+        clearInterval(timer);
+      };
+    }, []);
+
+    if (failed)
+      return <NoticePanel tone="destructive" title={t("tab.error")} />;
+    if (!hosts) return <LoadingState compact label={t("card.loading")} />;
+    if (hosts.length === 0)
+      return <EmptyState icon={Boxes} title={t("card.empty")} />;
+    return (
+      <div className="flex flex-col text-sm">
+        {hosts.map((h) => (
+          <button
+            key={h.id}
+            type="button"
+            className="flex items-center justify-between border-b border-border px-3 py-2 text-left"
+            onClick={() => {
+              const host = app.getHost(h.id);
+              if (host) app.tabs.openTab(host as never, "incus");
+            }}
+          >
+            <span className="font-medium">{h.name}</span>
+            <span
+              className={h.ok ? "text-muted-foreground" : "text-destructive"}
+            >
+              {h.ok
+                ? t("card.running", { running: h.running, total: h.total })
+                : t("card.failed")}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+  };
+}

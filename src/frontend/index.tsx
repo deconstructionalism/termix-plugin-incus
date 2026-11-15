@@ -20,6 +20,8 @@ import {
 import { Boxes } from "lucide-react";
 import { bytes, limitBytes, percentOf } from "./format";
 import { InstanceView } from "./instance-view";
+import { createCompanion } from "./companion";
+import { createCard } from "./card";
 
 const TAB_ID = "incus";
 
@@ -310,6 +312,23 @@ export function activate(app: TermixApp): void {
     titleKey: "tab.title",
     requiresHost: true,
     noHostMessageKey: "tab.noHost",
+  });
+
+  app.registerCompanion("incus", createCompanion(app), {
+    icon: Boxes,
+    titleKey: "companion.title",
+    order: 31,
+    tabTypes: ["terminal"],
+    when: (_tab, host) => incusEnabled(host),
+  });
+
+  app.registerDashboardCard({
+    id: "incus-hosts",
+    titleKey: "card.title",
+    defaultPanel: "side",
+    defaultHeight: 200,
+    frame: "framed",
+    component: createCard(app),
   });
 
   app.registerHostAction({

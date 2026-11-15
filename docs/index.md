@@ -33,6 +33,11 @@ A host's **protected instances** are never stopped, restarted, frozen, restored 
 
 **Shells** are separate from the ladder on purpose: a host turns them on with Allow shells, and people need the **Open shells** permission and edit access to the host. A root shell in an instance can read everything it holds, secrets included, so they're off by default.
 
+## Beside the terminal and on the dashboard
+
+- **A panel beside a host's terminal** lists its instances with state, CPU and memory. Open it from the terminal's panel bar; it refreshes while it's showing.
+- **A dashboard card** shows how many instances run on each host with Incus turned on. Click a host to open its Incus tab.
+
 ## Processes
 
 Click an instance to see its processes: PID, user, CPU, memory, threads, how long each has run and its command line. The list's Tasks column counts threads too, as Incus does, so it's usually higher than the number of processes. It refreshes every 5 seconds while open.

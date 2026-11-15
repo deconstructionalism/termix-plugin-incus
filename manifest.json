@@ -439,7 +439,14 @@
           "filters": ["status"]
         }
       ]
-    }
+    },
+    "dashboardCards": [
+      {
+        "id": "incus-hosts",
+        "titleKey": "card.title",
+        "icon": "Boxes"
+      }
+    ]
   },
   "locales": "locales",
   "platforms": ["linux", "win32", "darwin"]
