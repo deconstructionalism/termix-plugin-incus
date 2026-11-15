@@ -509,6 +509,14 @@ export function registerRoutes(
             running: count("Running"),
             stopped: count("Stopped"),
             frozen: count("Frozen"),
+            // the ones not running, by name, for the card to point at
+            down: rows
+              .filter((r) => r.status !== "Running")
+              .map((r) => ({
+                name: r.name,
+                project: r.project,
+                status: r.status,
+              })),
           });
         } catch (error) {
           if (!(error instanceof ListError)) throw error;

@@ -19,6 +19,7 @@ type HostSummary =
       running: number;
       stopped: number;
       frozen: number;
+      down: { name: string; project: string; status: string }[];
     }
   | { id: number; name: string; ok: false; error: string };
 
@@ -63,20 +64,32 @@ export function createCard(app: TermixApp) {
           <button
             key={h.id}
             type="button"
-            className="flex items-center justify-between border-b border-border px-3 py-2 text-left"
+            className="flex flex-col gap-0.5 border-b border-border px-3 py-2 text-left"
             onClick={() => {
               const host = app.getHost(h.id);
               if (host) app.tabs.openTab(host as never, "incus");
             }}
           >
-            <span className="font-medium">{h.name}</span>
-            <span
-              className={h.ok ? "text-muted-foreground" : "text-destructive"}
-            >
-              {h.ok
-                ? t("card.running", { running: h.running, total: h.total })
-                : t("card.failed")}
+            <span className="flex items-center justify-between">
+              <span className="font-medium">{h.name}</span>
+              <span
+                className={h.ok ? "text-muted-foreground" : "text-destructive"}
+              >
+                {h.ok
+                  ? t("card.running", { running: h.running, total: h.total })
+                  : t("card.failed")}
+              </span>
             </span>
+            {h.ok && h.down.length > 0 ? (
+              <span className="text-xs text-muted-foreground">
+                {h.down
+                  .map(
+                    (d) =>
+                      `${t(`card.status.${d.status.toLowerCase()}`, { defaultValue: d.status })}: ${d.name}`,
+                  )
+                  .join(", ")}
+              </span>
+            ) : null}
           </button>
         ))}
       </div>

@@ -16,7 +16,7 @@
 - Levels and permissions are a ladder, and say so: Manage includes Operate, which includes Read. Shells stay separate.
 - Frozen instances: a container's processes still show, marked paused; logs and shells wait until it's unfrozen.
 - A panel beside a host's terminal listing its instances with state, CPU and memory, and a link to the Incus tab.
-- A dashboard card with each host's running instances.
+- A dashboard card with each host's running instances, naming any that are stopped or frozen.
 - Shorter labels for the host level, with the details in its description.
 - The list's count column is Tasks: Incus counts processes and their threads.
 - VMs without the Incus agent show "no agent" where Incus can't measure, and disks the storage doesn't measure show "not reported".

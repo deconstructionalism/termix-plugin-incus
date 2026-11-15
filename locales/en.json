@@ -248,6 +248,11 @@
     "empty": "No hosts have Incus turned on.",
     "running": "{{running}} of {{total}} running",
     "failed": "Incus didn't answer",
-    "loading": "Asking each host's Incus…"
+    "loading": "Asking each host's Incus…",
+    "status": {
+      "stopped": "Stopped",
+      "frozen": "Frozen",
+      "error": "Error"
+    }
   }
 }

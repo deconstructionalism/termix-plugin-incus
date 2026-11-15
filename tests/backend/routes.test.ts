@@ -113,6 +113,7 @@ describe("GET /summary", () => {
         running: 3,
         stopped: 1,
         frozen: 0,
+        down: [{ name: "old-app", project: "lab", status: "Stopped" }],
       },
     ]);
   });
