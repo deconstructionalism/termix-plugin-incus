@@ -39,6 +39,7 @@ describe("parseInstances", () => {
     expect(termix.network).toEqual({ received: 1000, sent: 2000 });
     expect(termix.processes).toBe(12);
     expect(termix.agent).toBeNull();
+    expect(termix.idmapBase).toBe(1000000);
   });
 
   it("lists pool disks even when the storage reports nothing", () => {
@@ -50,6 +51,10 @@ describe("parseInstances", () => {
     expect(byName("studio").disks).toEqual([
       { device: "root", usage: 21474836480, total: null },
     ]);
+  });
+
+  it("has no id map when Incus gives none, rather than 0", () => {
+    expect(byName("studio").idmapBase).toBeNull();
   });
 
   it("knows a VM with its agent from one without", () => {

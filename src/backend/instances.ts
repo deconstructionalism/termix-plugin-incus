@@ -114,9 +114,26 @@ function disks(state: Json, devices: Json): InstanceDisk[] {
   });
 }
 
+// root inside is this host uid: volatile.idmap.base, or the uid entry of
+// volatile.idmap.current that maps container id 0
 function idmapBase(config: Json): number | null {
-  const base = Number(str(config["volatile.idmap.base"]));
-  return Number.isSafeInteger(base) && base >= 0 ? base : null;
+  const base = str(config["volatile.idmap.base"]);
+  if (base !== null && /^\d+$/.test(base)) return Number(base);
+  const current = str(config["volatile.idmap.current"]);
+  if (current === null) return null;
+  try {
+    const entries: unknown = JSON.parse(current);
+    if (!Array.isArray(entries)) return null;
+    for (const raw of entries) {
+      const e = obj(raw);
+      if (e.Isuid === true && e.Nsid === 0 && typeof e.Hostid === "number") {
+        return e.Hostid;
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 export function parseInstance(raw: unknown): InstanceRow | null {

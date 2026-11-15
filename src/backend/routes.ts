@@ -28,9 +28,12 @@ async function answer(
   }
 }
 
-export function registerRoutes(router: Router, ctx: PluginContext): void {
+export function registerRoutes(
+  router: Router,
+  ctx: PluginContext,
+  lists: InstanceLists,
+): void {
   router.use(ctx.rbac.require("read") as never);
-  const lists = new InstanceLists(ctx);
   const processes = new Processes(ctx);
 
   // checks, then finds the instance in the host's current list
@@ -179,6 +182,10 @@ export function registerRoutes(router: Router, ctx: PluginContext): void {
             instances,
             level: settings.level,
             protected: settings.protected,
+            shell:
+              settings.allowShell &&
+              (await ctx.rbac.has("shell")) &&
+              (await ctx.hosts.checkAccess(hostId, "edit")).hasAccess,
             pollSeconds: settings.pollSeconds,
           };
         } catch (error) {

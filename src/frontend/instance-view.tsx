@@ -17,6 +17,7 @@ import {
 } from "@termix-ssh/plugin-sdk/ui";
 import { Activity, Lock } from "lucide-react";
 import { bytes, duration } from "./format";
+import { ShellPanel } from "./shell-panel";
 
 export interface Process {
   pid: number;
@@ -62,7 +63,7 @@ export interface Details {
 }
 export type DetailsAnswer = { ok: true; details: Details } | Failure;
 
-type Tab = "processes" | "logs" | "details";
+type Tab = "processes" | "logs" | "details" | "shell";
 type Sort = "cpu" | "memory";
 
 export function sortProcesses(list: Process[], sort: Sort): Process[] {
@@ -138,12 +139,14 @@ export function InstanceView({
   hostId,
   project,
   name,
+  canShell,
   onClose,
 }: {
   app: TermixApp;
   hostId: string;
   project: string;
   name: string;
+  canShell: boolean;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -165,6 +168,7 @@ export function InstanceView({
             { id: "processes", label: t("instance.processes") },
             { id: "logs", label: t("instance.logs") },
             { id: "details", label: t("instance.details") },
+            ...(canShell ? [{ id: "shell", label: t("instance.shell") }] : []),
           ]}
         />
       }
@@ -173,6 +177,9 @@ export function InstanceView({
         <Processes app={app} path={`${base}/processes`} />
       ) : null}
       {tab === "logs" ? <Logs app={app} path={`${base}/logs`} /> : null}
+      {tab === "shell" && canShell ? (
+        <ShellPanel app={app} hostId={hostId} project={project} name={name} />
+      ) : null}
       {tab === "details" ? (
         <DetailsPanel app={app} path={`${base}/details`} />
       ) : null}

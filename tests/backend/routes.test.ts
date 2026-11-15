@@ -173,8 +173,18 @@ describe("GET /hosts/:hostId/instances", () => {
     expect(body.ok).toBe(true);
     expect(body.instances).toHaveLength(4);
     expect(body.protected).toEqual(["termix"]);
+    expect(body.shell).toBe(false);
     expect(JSON.stringify(body)).not.toContain(SECRET);
     expect(commands).toEqual(["incus list --all-projects --format json"]);
+  });
+
+  it("tells the page whether this user may open shells", async () => {
+    const get = await start({
+      permissions: ["incus.read", "incus.shell"],
+      hostSettings: { 1: { enableIncus: true, allowShell: true } },
+      answer: { stdout: listJson },
+    });
+    expect((await get("/hosts/1/instances")).body.shell).toBe(true);
   });
 
   it("says why incus didn't answer", async () => {

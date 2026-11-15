@@ -1,6 +1,6 @@
 The Incus plugin shows the [Incus](https://linuxcontainers.org/incus/) containers and VMs on your hosts, under each host, over the SSH login Termix already has for it.
 
-This is an early version: it lists a host's instances with their usage, and shows each one's processes, logs and details. Shells and actions come next.
+This is an early version: it lists a host's instances with their usage, and shows each one's processes, logs, details and a shell. Actions come next.
 
 ## Turn it on
 
@@ -47,6 +47,17 @@ Click an instance to see its processes: PID, user, CPU, memory, threads, how lon
 ## Details
 
 Config, devices and snapshots, from the same answer as the list. Values of `environment.*`, `cloud-init.*` and keys whose names look like secrets are hidden on the server.
+
+## Shells
+
+The Shell tab opens a root shell inside a running instance. It shows only when all of these hold, and the server checks them again on every connect:
+
+- the host has **Allow shells** on (off by default)
+- you have the **Open shells** permission and edit access to the host
+- the instance isn't on the host's protected list
+- for a VM, the Incus agent is running
+
+It tries the host's chosen shell first, then `/run/current-system/sw/bin/bash` (NixOS), `/bin/bash` and `/bin/sh`. Closing the tab ends the shell.
 
 ## Secret values
 

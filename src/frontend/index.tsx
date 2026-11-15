@@ -38,7 +38,14 @@ export interface Instance {
 }
 
 export type ListAnswer =
-  | { ok: true; instances: Instance[]; pollSeconds: number }
+  | {
+      ok: true;
+      instances: Instance[];
+      pollSeconds: number;
+      protected: string[];
+      // whether this user may open shells on this host, decided by the server
+      shell: boolean;
+    }
   | { ok: false; error: string };
 
 export function incusEnabled(host: object | null | undefined): boolean {
@@ -194,6 +201,12 @@ function createTab(app: TermixApp) {
             hostId={hostId}
             project={open.project}
             name={open.name}
+            canShell={
+              !!answer &&
+              "shell" in answer &&
+              answer.shell &&
+              !answer.protected.includes(open.name)
+            }
             onClose={() => setOpen(null)}
           />
         ) : null}

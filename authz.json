@@ -77,6 +77,26 @@
       },
       "allowed": "any",
       "note": "Needs a real host running Incus to answer; refusals are still checked"
+    },
+    "WS /plugin-ws/incus/console": {
+      "access": "user",
+      "permission": "incus.shell",
+      "resource": {
+        "kind": "host",
+        "min": "edit"
+      },
+      "send": [
+        {
+          "type": "connect",
+          "data": {
+            "hostId": "{{host}}",
+            "project": "default",
+            "name": "authz-instance"
+          }
+        }
+      ],
+      "allowed": "any",
+      "note": "Needs a real host running Incus; refusals are still checked"
     }
   }
 }

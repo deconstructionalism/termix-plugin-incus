@@ -111,7 +111,8 @@
   "instance": {
     "processes": "Processes",
     "logs": "Logs",
-    "details": "Details"
+    "details": "Details",
+    "shell": "Shell"
   },
   "logs": {
     "loading": "Reading logs…",
@@ -142,5 +143,11 @@
     "hidden": "hidden",
     "hiddenHint": "Hidden because it may hold a secret. It never leaves the Termix server.",
     "failed": "Couldn't read the details"
+  },
+  "shell": {
+    "error": "Couldn't open a shell",
+    "closed": "The shell ended.",
+    "reconnect": "Open a new shell",
+    "noSocket": "The plugin's socket isn't reachable."
   }
 }

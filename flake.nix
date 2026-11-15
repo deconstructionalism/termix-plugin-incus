@@ -22,7 +22,7 @@
           version = (builtins.fromJSON (builtins.readFile ./manifest.json)).version;
           src = self;
           nodejs = pkgs.nodejs_24;
-          npmDepsHash = "sha256-wBMG8iVMEUUW2tpa4664du9Ej2QQ00nKbhmg3rusy+w=";
+          npmDepsHash = "sha256-syuotVFjh+5frTgzM19eWTiNShcff5e7P+VQVRV6zj4=";
           npmFlags = [ "--ignore-scripts" ];
           doCheck = true;
           checkPhase = ''
