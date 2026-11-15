@@ -135,6 +135,39 @@ describe(`${manifest.id} activate`, () => {
     expect(screen.getByText("1h 1m")).toBeTruthy();
   });
 
+  it("confirms an action that worked", async () => {
+    const get = vi.fn(async (path: string) => ({
+      data: path.endsWith("/processes")
+        ? { ok: true, truncated: false, processes: [] }
+        : {
+            ok: true,
+            pollSeconds: 15,
+            protected: [],
+            shell: false,
+            operate: true,
+            instances: [instance({})],
+          },
+    }));
+    const post = vi.fn(async () => ({
+      data: { ok: true, summary: "Started termix" },
+    }));
+    rendered = await renderWithApp(plugin, {
+      manifest,
+      locales,
+      api: { get, post } as never,
+    });
+    rendered.renderTab("incus", { isVisible: true, host } as never);
+    fireEvent.click(await screen.findByText("termix"));
+    fireEvent.click(await screen.findByText(locales.actions.restart.label));
+    const confirm = await screen.findAllByText(locales.actions.restart.label);
+    fireEvent.click(confirm[confirm.length - 1]);
+    expect(await screen.findByText("Started termix")).toBeTruthy();
+    expect(post).toHaveBeenCalledWith(
+      "/hosts/1/instances/default/termix/actions/restart",
+      { input: {} },
+    );
+  });
+
   it("says why Incus didn't answer", async () => {
     await show({ ok: false, error: "incus: command not found" });
     expect(await screen.findByText("incus: command not found")).toBeTruthy();

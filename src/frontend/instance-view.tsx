@@ -203,6 +203,7 @@ export function InstanceView({
         />
       }
     >
+      {action.done ? <NoticePanel title={action.done} /> : null}
       {action.error ? (
         <NoticePanel tone="destructive" title={t("actions.failed")}>
           {action.error}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useTranslation,
   type TermixApp,
@@ -24,17 +24,25 @@ export function useInstanceAction(
 ) {
   const [busy, setBusy] = useState<ActionName | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  useEffect(() => {
+    if (!done) return;
+    const timer = setTimeout(() => setDone(null), 6_000);
+    return () => clearTimeout(timer);
+  }, [done]);
   const run = async (
     action: ActionName,
     input: Record<string, unknown> = {},
   ) => {
     setBusy(action);
     setError(null);
+    setDone(null);
     try {
       const { data } = await app.api.post<Answer>(`${base}/actions/${action}`, {
         input,
       });
       if ("error" in data) setError(data.error);
+      else setDone(data.summary);
       onDone();
     } catch {
       setError("request failed");
@@ -42,7 +50,7 @@ export function useInstanceAction(
       setBusy(null);
     }
   };
-  return { busy, error, run };
+  return { busy, error, done, run };
 }
 
 // which buttons fit a state, and which the protected list takes away
