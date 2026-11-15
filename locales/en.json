@@ -1,36 +1,73 @@
 {
   "plugin": {
-    "name": "Hello World",
-    "description": "A minimal Termix plugin: one tab, one route, one setting and one table."
+    "name": "Incus",
+    "description": "Incus containers and VMs on your hosts over SSH: usage, processes, logs, a shell and actions, with per-host levels and secret values kept out of view."
   },
   "tab": {
-    "title": "Hello World",
-    "empty": "No notes yet.",
-    "placeholder": "Write a note",
-    "add": "Add",
-    "error": "Could not load or save notes."
+    "title": "Incus",
+    "noHost": "Open Incus from a host that has it turned on.",
+    "loading": "Asking the host's Incus…",
+    "version": "Incus {{server}} answers on this host.",
+    "unreachable": "Incus didn't answer on this host: {{error}}",
+    "error": "Couldn't reach the Incus plugin's server side."
   },
   "permissions": {
-    "use": {
-      "title": "Use Hello World",
-      "description": "Open the Hello World tab and keep notes in it."
+    "read": {
+      "title": "See Incus instances",
+      "description": "See instances on hosts with Incus turned on: their usage, processes, logs and settings with secret values hidden."
+    },
+    "operate": {
+      "title": "Operate Incus instances",
+      "description": "Start, stop, restart, freeze and snapshot instances, and end their processes, on hosts that allow it."
+    },
+    "shell": {
+      "title": "Open shells in Incus instances",
+      "description": "A root shell inside instances, on hosts that allow it. A shell can read everything the instance holds, secrets included."
+    },
+    "manage": {
+      "title": "Manage Incus instances",
+      "description": "Create, delete, copy and rename instances and edit their config, on hosts that allow it."
     }
   },
   "settings": {
-    "admin": {
-      "greeting": {
-        "label": "Greeting",
-        "description": "Shown at the top of the Hello World tab."
+    "host": {
+      "enable": {
+        "label": "Incus",
+        "description": "Show this host's Incus instances. Only admins can change these settings."
+      },
+      "level": {
+        "label": "What's allowed",
+        "description": "The most anyone may do with this host's instances. People also need the matching permission.",
+        "read": "Read: see instances",
+        "operate": "Operate: also start, stop, restart and snapshot",
+        "manage": "Manage: also create, delete and edit config"
+      },
+      "protected": {
+        "label": "Protected instances",
+        "description": "One name per line. These are never stopped, restarted, frozen, restored or deleted from Termix, and get no shell."
+      },
+      "allowShell": {
+        "label": "Allow shells",
+        "description": "Let people with the shell permission open a root shell inside instances."
+      },
+      "shell": {
+        "label": "Shell to try first",
+        "description": "An absolute path, such as /bin/zsh. Left empty, NixOS's bash, then /bin/bash, then /bin/sh."
+      },
+      "allowReveal": {
+        "label": "Allow revealing hidden values",
+        "description": "On a Manage host, let people with the manage permission show one hidden config value at a time. Each reveal is in the audit log."
+      },
+      "incusCommand": {
+        "label": "How to run incus",
+        "description": "The host's user must be able to run incus without a password.",
+        "plain": "incus (the user is in incus-admin)",
+        "sudo": "sudo -n incus (a passwordless sudo rule)"
+      },
+      "pollSeconds": {
+        "label": "Refresh every (seconds)",
+        "description": "How often the list refreshes while someone is looking at it."
       }
-    }
-  },
-  "operations": {
-    "count": {
-      "title": "Notes"
-    },
-    "add": {
-      "title": "Add a note",
-      "text": "Note"
     }
   }
 }

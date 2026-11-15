@@ -1,19 +1,21 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import {
   useTranslation,
   type TabProps,
   type TermixApp,
 } from "@termix-ssh/plugin-sdk/frontend";
+import { LoadingState } from "@termix-ssh/plugin-sdk/ui";
 
-const TAB_ID = "hello-world";
+const TAB_ID = "incus";
 
-interface Note {
-  id: number;
-  text: string;
-  createdAt: string;
+interface VersionAnswer {
+  ok: boolean;
+  client?: string | null;
+  server?: string | null;
+  error?: string;
 }
 
-function HandIcon(props: { className?: string }) {
+function BoxesIcon(props: { className?: string }) {
   return (
     <svg
       {...props}
@@ -24,75 +26,65 @@ function HandIcon(props: { className?: string }) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8" />
-      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15" />
+      <path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z" />
+      <path d="m7 16.5-4.74-2.85M7 16.5l5-3M7 16.5v5.17" />
+      <path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z" />
+      <path d="m17 16.5-5-3M17 16.5l4.74-2.85M17 16.5v5.17" />
+      <path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z" />
+      <path d="M12 8 7.26 5.15M12 8l4.74-2.85M12 13.5V8" />
     </svg>
   );
 }
 
+export function incusEnabled(host: object | null | undefined): boolean {
+  const all = (
+    host as { pluginSettings?: Record<string, Record<string, unknown>> }
+  )?.pluginSettings;
+  return all?.incus?.enableIncus === true;
+}
+
 function createTab(app: TermixApp) {
-  return function HelloWorldTab({ isVisible }: TabProps) {
+  return function IncusTab({ host, isVisible }: TabProps) {
     const { t } = useTranslation();
-    const [greeting, setGreeting] = useState("");
-    const [notes, setNotes] = useState<Note[]>([]);
-    const [draft, setDraft] = useState("");
+    const [version, setVersion] = useState<VersionAnswer | null>(null);
     const [failed, setFailed] = useState(false);
 
-    const load = async () => {
-      try {
-        const { data } = await app.api.get<{ greeting: string; notes: Note[] }>(
-          "/notes",
-        );
-        setGreeting(data.greeting);
-        setNotes(data.notes);
-        setFailed(false);
-      } catch {
-        setFailed(true);
-      }
-    };
-
     useEffect(() => {
-      if (isVisible) void load();
-    }, [isVisible]);
+      if (!isVisible || !host) return;
+      let live = true;
+      app.api
+        .get<VersionAnswer>(`/hosts/${encodeURIComponent(host.id)}/version`)
+        .then(({ data }) => {
+          if (live) {
+            setVersion(data);
+            setFailed(false);
+          }
+        })
+        .catch(() => {
+          if (live) setFailed(true);
+        });
+      return () => {
+        live = false;
+      };
+    }, [isVisible, host?.id]);
 
-    const add = async (event: FormEvent) => {
-      event.preventDefault();
-      if (!draft.trim()) return;
-      try {
-        await app.api.post("/notes", { text: draft });
-        setDraft("");
-      } catch {
-        setFailed(true);
-        return;
-      }
-      await load();
-    };
-
+    if (!host) {
+      return <p className="p-4 text-sm">{t("tab.noHost")}</p>;
+    }
     return (
-      <div className="flex flex-col gap-4 p-4">
-        <h2 className="text-lg font-semibold">{greeting}</h2>
-        <form onSubmit={add} className="flex gap-2">
-          <input
-            className="flex-1 border border-border bg-transparent px-2 py-1"
-            value={draft}
-            placeholder={t("tab.placeholder")}
-            onChange={(event) => setDraft(event.target.value)}
-          />
-          <button type="submit" className="border border-border px-3 py-1">
-            {t("tab.add")}
-          </button>
-        </form>
+      <div className="flex flex-col gap-2 p-4">
+        <h2 className="text-lg font-semibold">{host.name}</h2>
         {failed && <p className="text-sm text-destructive">{t("tab.error")}</p>}
-        {notes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("tab.empty")}</p>
-        ) : (
-          <ul className="flex flex-col gap-1">
-            {notes.map((note) => (
-              <li key={note.id} className="border-b border-border py-1">
-                {note.text}
-              </li>
-            ))}
-          </ul>
+        {!failed && !version && <LoadingState label={t("tab.loading")} />}
+        {version?.ok && (
+          <p className="text-sm">
+            {t("tab.version", { server: version.server ?? "?" })}
+          </p>
+        )}
+        {version && !version.ok && (
+          <p className="text-sm text-destructive">
+            {t("tab.unreachable", { error: version.error ?? "" })}
+          </p>
         )}
       </div>
     );
@@ -100,17 +92,26 @@ function createTab(app: TermixApp) {
 }
 
 export function activate(app: TermixApp): void {
-  app.registerRailItem({
-    id: TAB_ID,
-    icon: HandIcon,
-    titleKey: "tab.title",
-    kind: "tab",
-    permission: "use",
+  // host actions filter synchronously
+  let canRead = false;
+  void app.hasPermission("read").then((allowed) => {
+    canRead = allowed;
   });
+
   app.registerTab(TAB_ID, createTab(app), {
-    icon: HandIcon,
+    icon: BoxesIcon,
     titleKey: "tab.title",
-    singleton: true,
-    hostless: true,
+    requiresHost: true,
+    noHostMessageKey: "tab.noHost",
+  });
+
+  app.registerHostAction({
+    id: TAB_ID,
+    titleKey: "tab.title",
+    icon: BoxesIcon,
+    kind: "open",
+    order: 31,
+    tabType: TAB_ID,
+    when: (host) => canRead && incusEnabled(host),
   });
 }

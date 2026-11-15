@@ -1,32 +1,33 @@
 {
-  "id": "hello-world",
-  "name": "Hello World",
-  "version": "1.0.0",
-  "description": "A minimal Termix plugin: one tab, one route, one setting and one table.",
+  "id": "incus",
+  "name": "Incus",
+  "version": "0.1.0",
+  "description": "Incus containers and VMs on your hosts over SSH: usage, processes, logs, a shell and actions, with per-host levels and secret values kept out of view.",
   "author": {
-    "name": "Your Name"
+    "name": "deconstructionalism",
+    "url": "https://github.com/deconstructionalism"
   },
   "license": "Apache-2.0",
-  "repository": "https://github.com/your-org/termix-plugin-hello-world",
-  "docs": "https://github.com/your-org/termix-plugin-hello-world/tree/main/docs",
-  "category": "Productivity",
-  "icon": "Hand",
+  "repository": "https://github.com/deconstructionalism/termix-plugin-incus",
+  "docs": "https://github.com/deconstructionalism/termix-plugin-incus/tree/main/docs",
+  "category": "Infrastructure",
+  "icon": "Boxes",
   "features": [
-    "A tab opened from the sidebar",
-    "An admin setting",
-    "A table of greetings",
-    "An action other parts of Termix can run"
+    "Containers and VMs on each host, with state, addresses, CPU, memory and disk",
+    "Per host levels: read, operate or manage, set only by admins",
+    "Secret values in instance config never leave the server"
   ],
   "env": [],
   "engine": {
     "termix": ">=26.11.2-0",
-    "api": "^2.0.0"
+    "api": "^2.8.0"
   },
   "capabilities": [
-    "db:own",
+    "hosts:read",
+    "ssh:connect",
+    "credentials:use",
     "network:serve",
-    "ui:surface",
-    "operations:provide"
+    "ui:surface"
   ],
   "sandbox": {
     "schedules": [],
@@ -35,70 +36,127 @@
   "contributes": {
     "tabs": [
       {
-        "id": "hello-world",
+        "id": "incus",
         "titleKey": "tab.title",
-        "icon": "Hand",
-        "openFrom": ["rail"]
+        "icon": "Boxes",
+        "openFrom": ["host-context-menu", "palette"]
       }
     ],
     "permissions": [
       {
-        "name": "use",
-        "titleKey": "permissions.use.title",
-        "descriptionKey": "permissions.use.description",
-        "defaultRoles": ["admin", "user"]
+        "name": "read",
+        "titleKey": "permissions.read.title",
+        "descriptionKey": "permissions.read.description",
+        "defaultRoles": ["admin"]
+      },
+      {
+        "name": "operate",
+        "titleKey": "permissions.operate.title",
+        "descriptionKey": "permissions.operate.description",
+        "defaultRoles": ["admin"]
+      },
+      {
+        "name": "shell",
+        "titleKey": "permissions.shell.title",
+        "descriptionKey": "permissions.shell.description",
+        "defaultRoles": ["admin"]
+      },
+      {
+        "name": "manage",
+        "titleKey": "permissions.manage.title",
+        "descriptionKey": "permissions.manage.description",
+        "defaultRoles": ["admin"]
       }
     ],
     "settings": {
-      "admin": [
-        {
-          "key": "greeting",
-          "type": "string",
-          "labelKey": "settings.admin.greeting.label",
-          "descriptionKey": "settings.admin.greeting.description",
-          "default": "Hello"
-        }
-      ]
-    },
-    "operations": {
-      "actions": [
-        {
-          "id": "hello-world.count-notes",
-          "titleKey": "operations.count.title",
-          "scope": "server",
-          "risk": "read",
-          "permission": "use",
-          "surfaces": {
-            "palette": false
+      "host": {
+        "editorGroup": "ssh",
+        "editorOrder": 35,
+        "enableKey": "enableIncus",
+        "enableLabelKey": "settings.host.enable.label",
+        "enableDescriptionKey": "settings.host.enable.description",
+        "enablePermission": "admin.plugins.manage",
+        "fields": [
+          {
+            "key": "level",
+            "type": "select",
+            "labelKey": "settings.host.level.label",
+            "descriptionKey": "settings.host.level.description",
+            "requires": "enableIncus",
+            "default": "read",
+            "permission": "admin.plugins.manage",
+            "options": [
+              { "value": "read", "labelKey": "settings.host.level.read" },
+              { "value": "operate", "labelKey": "settings.host.level.operate" },
+              { "value": "manage", "labelKey": "settings.host.level.manage" }
+            ]
+          },
+          {
+            "key": "protected",
+            "type": "textarea",
+            "labelKey": "settings.host.protected.label",
+            "descriptionKey": "settings.host.protected.description",
+            "requires": "enableIncus",
+            "default": "",
+            "permission": "admin.plugins.manage",
+            "defaultable": false
+          },
+          {
+            "key": "allowShell",
+            "type": "boolean",
+            "labelKey": "settings.host.allowShell.label",
+            "descriptionKey": "settings.host.allowShell.description",
+            "requires": "enableIncus",
+            "default": false,
+            "permission": "admin.plugins.manage"
+          },
+          {
+            "key": "shell",
+            "type": "string",
+            "labelKey": "settings.host.shell.label",
+            "descriptionKey": "settings.host.shell.description",
+            "requires": "allowShell",
+            "default": "",
+            "permission": "admin.plugins.manage"
+          },
+          {
+            "key": "allowReveal",
+            "type": "boolean",
+            "labelKey": "settings.host.allowReveal.label",
+            "descriptionKey": "settings.host.allowReveal.description",
+            "requires": "enableIncus",
+            "default": false,
+            "permission": "admin.plugins.manage"
+          },
+          {
+            "key": "incusCommand",
+            "type": "select",
+            "labelKey": "settings.host.incusCommand.label",
+            "descriptionKey": "settings.host.incusCommand.description",
+            "requires": "enableIncus",
+            "default": "incus",
+            "permission": "admin.plugins.manage",
+            "options": [
+              {
+                "value": "incus",
+                "labelKey": "settings.host.incusCommand.plain"
+              },
+              { "value": "sudo", "labelKey": "settings.host.incusCommand.sudo" }
+            ]
+          },
+          {
+            "key": "pollSeconds",
+            "type": "number",
+            "labelKey": "settings.host.pollSeconds.label",
+            "descriptionKey": "settings.host.pollSeconds.description",
+            "requires": "enableIncus",
+            "default": 15,
+            "min": 10,
+            "max": 300,
+            "permission": "admin.plugins.manage"
           }
-        },
-        {
-          "id": "hello-world.add-note",
-          "titleKey": "operations.add.title",
-          "icon": "Plus",
-          "scope": "server",
-          "risk": "change",
-          "permission": "use",
-          "dryRun": "describe",
-          "inputs": [
-            {
-              "key": "text",
-              "type": "string",
-              "labelKey": "operations.add.text",
-              "required": true
-            }
-          ]
-        }
-      ],
-      "signals": [
-        {
-          "id": "hello-world.notes",
-          "titleKey": "operations.count.title",
-          "read": "hello-world.count-notes",
-          "scope": "server",
-          "kind": "count"
-        }
-      ]
+        ]
+      }
     }
   },
   "locales": "locales",

@@ -74,4 +74,14 @@ file per theme scoped under `.<id>`). A theme only plugin has no `src/`: just `m
 Keep this section current when the plugin changes: what it does, how it is put together, decisions that
 aren't obvious from the code, and anything that has bitten you before.
 
-- What it does: a template example that keeps short notes per user. Replace this.
+- What it does: shows Incus instances on a host over SSH and the `incus` CLI, with per host levels
+  (read, operate, manage), separate shell permission, protected instances and secret values hidden on the
+  server.
+- `src/backend/settings.ts` reads a host's settings and falls back to the safest value for anything it
+  doesn't understand. `src/backend/access.ts` does every check before touching a host, on the server, every
+  time. `src/backend/commands.ts` builds command lines from fixed words and refuses any word a shell could
+  read as more than itself: never quote, never pass free text in a command line (use stdin).
+- Every host setting carries `permission: admin.plugins.manage`, and the switch `enablePermission`:
+  without them anyone with edit access to a host could change its level or protected list.
+- Tests replace `ctx.ssh.exec` on the mock, since the SDK's mock answers every command with empty output.
+- Use Node 24 (`nix shell nixpkgs#nodejs_24`): on Node 22 the test runner's native module is missing.

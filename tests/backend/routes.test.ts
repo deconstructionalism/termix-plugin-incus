@@ -1,43 +1,67 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import { fileURLToPath } from "node:url";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import express, { type Router } from "express";
 import {
   createMockCtx,
-  createTestDb,
   type MockPluginContext,
-  type TestDb,
 } from "@termix-ssh/plugin-sdk/testing";
 import type { PluginManifest } from "@termix-ssh/plugin-sdk/manifest";
+import type { PluginHostSummary } from "@termix-ssh/plugin-sdk/backend";
 import manifestJson from "../../manifest.json";
 import { activate } from "../../src/backend/index.js";
+import { parseVersion } from "../../src/backend/routes.js";
 
-const pluginDir = fileURLToPath(new URL("../..", import.meta.url));
 const manifest = manifestJson as unknown as PluginManifest;
 
-let db: TestDb;
+function host(id: number, name: string): PluginHostSummary {
+  return {
+    id,
+    userId: "user-1",
+    name,
+    ip: `10.0.0.${id}`,
+    port: 22,
+    username: "remote",
+    tags: null,
+  } as PluginHostSummary;
+}
+
+let server: http.Server | null = null;
 let mock: MockPluginContext;
-let server: http.Server;
-let port: number;
+let commands: string[];
 
-beforeEach(async () => {
-  db = await createTestDb(pluginDir);
-  db.sqlite
-    .prepare("INSERT INTO users (id, username) VALUES (?, ?)")
-    .run("user-1", "user-1");
-
+async function start(options: {
+  permissions?: string[];
+  hostSettings?: Record<number, Record<string, unknown>>;
+  answer?: { stdout?: string; stderr?: string; code?: number };
+}) {
   let router: Router | null = null;
+  commands = [];
   mock = createMockCtx({
     pluginId: manifest.id,
     manifest,
-    // The rules of the plugin process the backend runs in.
     sandbox: true,
     capabilities: manifest.capabilities,
-    db: db.database,
     router: () => (router = express.Router()),
-    permissions: ["hello-world.use"],
+    permissions: options.permissions ?? ["incus.read"],
+    hosts: [host(1, "homebrain"), host(2, "sidekick")],
   });
+  for (const [id, values] of Object.entries(options.hostSettings ?? {})) {
+    for (const [key, value] of Object.entries(values)) {
+      await mock.ctx.settings.setHost(Number(id), key, value);
+    }
+  }
+  const answer = options.answer ?? {};
+  mock.ctx.ssh.exec = (async (_host: unknown, command: string) => {
+    commands.push(command);
+    return {
+      stdout: answer.stdout ?? "",
+      stderr: answer.stderr ?? "",
+      code: answer.code ?? 0,
+      truncated: false,
+      timedOut: false,
+    };
+  }) as never;
   await activate(mock.ctx);
 
   const app = express();
@@ -48,41 +72,97 @@ beforeEach(async () => {
   });
   app.use((req, res, next) => router!(req, res, next));
   server = http.createServer(app);
-  await new Promise<void>((resolve) => server.listen(0, resolve));
-  port = (server.address() as AddressInfo).port;
-});
-
-afterEach(async () => {
-  await new Promise<void>((resolve) => server.close(() => resolve()));
-  db.close();
-});
-
-async function request(method: string, path: string, body?: unknown) {
-  const response = await fetch(`http://127.0.0.1:${port}${path}`, {
-    method,
-    headers: body ? { "content-type": "application/json" } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  return { status: response.status, body: await response.json() };
+  await new Promise<void>((resolve) => server!.listen(0, resolve));
+  const port = (server.address() as AddressInfo).port;
+  return async (path: string) => {
+    const response = await fetch(`http://127.0.0.1:${port}${path}`);
+    return { status: response.status, body: await response.json() };
+  };
 }
 
-describe("notes routes", () => {
-  it("adds a note and lists it with the admin greeting", async () => {
-    await mock.ctx.settings.set("greeting", "Hi there");
+afterEach(async () => {
+  if (server)
+    await new Promise<void>((resolve) => server!.close(() => resolve()));
+  server = null;
+});
 
-    const created = await request("POST", "/notes", { text: "first" });
-    expect(created.status).toBe(201);
-    expect(created.body).toEqual({ success: true });
+const VERSION = "Client version: 7.0.1\nServer version: 7.0.1\n";
 
-    const list = await request("GET", "/notes");
-    expect(list.body.greeting).toBe("Hi there");
-    expect(list.body.notes).toEqual([
-      expect.objectContaining({ userId: "user-1", text: "first" }),
+describe("GET /hosts", () => {
+  it("lists only hosts with Incus turned on", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true, level: "operate" } },
+    });
+    const { status, body } = await get("/hosts");
+    expect(status).toBe(200);
+    expect(body.hosts).toEqual([
+      { id: 1, name: "homebrain", level: "operate" },
     ]);
   });
 
-  it("refuses an empty note", async () => {
-    const created = await request("POST", "/notes", { text: "  " });
-    expect(created.status).toBe(400);
+  it("refuses someone without the read permission", async () => {
+    const get = await start({ permissions: [] });
+    expect((await get("/hosts")).status).toBe(403);
+  });
+});
+
+describe("GET /hosts/:hostId/version", () => {
+  it("asks the host's incus", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      answer: { stdout: VERSION },
+    });
+    const { status, body } = await get("/hosts/1/version");
+    expect(status).toBe(200);
+    expect(body).toEqual({ ok: true, client: "7.0.1", server: "7.0.1" });
+    expect(commands).toEqual(["incus version"]);
+  });
+
+  it("runs it the way the host says", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true, incusCommand: "sudo" } },
+      answer: { stdout: VERSION },
+    });
+    await get("/hosts/1/version");
+    expect(commands).toEqual(["sudo -n incus version"]);
+  });
+
+  it("says why incus didn't answer", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      answer: { stderr: "incus: command not found", code: 127 },
+    });
+    const { body } = await get("/hosts/1/version");
+    expect(body).toEqual({ ok: false, error: "incus: command not found" });
+  });
+
+  it("refuses a host with Incus off, without connecting", async () => {
+    const get = await start({});
+    expect((await get("/hosts/2/version")).status).toBe(403);
+    expect(commands).toEqual([]);
+  });
+
+  it("refuses a host the user can't see", async () => {
+    const get = await start({ hostSettings: { 1: { enableIncus: true } } });
+    expect((await get("/hosts/99/version")).status).toBe(404);
+    expect(commands).toEqual([]);
+  });
+
+  it("refuses something that isn't a host id", async () => {
+    const get = await start({});
+    expect((await get("/hosts/1;id/version")).status).toBe(400);
+  });
+});
+
+describe("parseVersion", () => {
+  it("reads both lines, or neither", () => {
+    expect(parseVersion(VERSION)).toEqual({ client: "7.0.1", server: "7.0.1" });
+    expect(
+      parseVersion("Client version: 6.0.0\nServer version: unreachable"),
+    ).toEqual({
+      client: "6.0.0",
+      server: "unreachable",
+    });
+    expect(parseVersion("")).toEqual({ client: null, server: null });
   });
 });

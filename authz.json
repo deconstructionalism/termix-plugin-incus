@@ -1,24 +1,19 @@
 {
   "$schema": "https://raw.githubusercontent.com/Termix-SSH/Termix/main/scripts/authz/authz.schema.json",
-  "seed": [
-    {
-      "as": "owner",
-      "method": "POST",
-      "path": "/plugin-api/hello-world/notes",
-      "body": { "text": "authz-own-note" }
-    }
-  ],
   "routes": {
-    "GET /plugin-api/hello-world/notes": {
+    "GET /plugin-api/incus/hosts": {
       "access": "user",
-      "permission": "hello-world.use",
+      "permission": "incus.read",
       "filtered": true,
-      "note": "Lists only the caller's own notes"
+      "note": "Lists only hosts the caller can see that have Incus turned on"
     },
-    "POST /plugin-api/hello-world/notes": {
+    "GET /plugin-api/incus/hosts/:hostId/version": {
       "access": "user",
-      "permission": "hello-world.use",
-      "body": { "text": "authz" }
+      "permission": "incus.read",
+      "resource": { "kind": "host", "min": "connect" },
+      "params": { "hostId": "host" },
+      "allowed": "any",
+      "note": "Needs a real host running Incus to answer; refusals are still checked"
     }
   }
 }

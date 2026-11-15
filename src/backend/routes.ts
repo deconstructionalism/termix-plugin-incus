@@ -1,76 +1,108 @@
 import type { Request, Response, Router } from "express";
-import { desc, eq } from "drizzle-orm";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type { PluginContext } from "@termix-ssh/plugin-sdk/backend";
+import { Refusal, requireHost } from "./access.js";
+import { incus } from "./commands.js";
+import { readHostSettings } from "./settings.js";
 
-// The table object ctx.db.define hands back. Drizzle's own types are
-// per dialect, so the routes treat it loosely.
-type NotesTable = any;
+async function answer(
+  res: Response,
+  work: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    res.json(await work());
+  } catch (error) {
+    if (error instanceof Refusal) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+}
 
-export function registerRoutes(
-  router: Router,
-  ctx: PluginContext,
-  notesTable: NotesTable,
-): void {
-  router.use(ctx.rbac.require("use") as never);
-
-  const client = () => ctx.db.client<BetterSQLite3Database>();
-  const actor = () => ctx.currentActor() as string;
+export function registerRoutes(router: Router, ctx: PluginContext): void {
+  router.use(ctx.rbac.require("read") as never);
 
   /**
    * @openapi
-   * /plugin-api/hello-world/notes:
+   * /plugin-api/incus/hosts:
    *   get:
-   *     summary: List the signed-in user's notes and the admin greeting
+   *     summary: The hosts the signed-in user can see that have Incus turned on
    *     tags:
-   *       - Hello World
+   *       - Incus
    *     responses:
    *       200:
-   *         description: The greeting and the notes, newest first
+   *         description: Each host's id, name and level
+   *       403:
+   *         description: No permission to read Incus
    */
-  router.get("/notes", async (_req: Request, res: Response) => {
-    const db = await client();
-    const rows = await db
-      .select()
-      .from(notesTable)
-      .where(eq(notesTable.userId, actor()))
-      .orderBy(desc(notesTable.id));
-    const greeting = (await ctx.settings.get<string>("greeting")) ?? "Hello";
-    res.json({ greeting, notes: rows });
+  router.get("/hosts", async (_req: Request, res: Response) => {
+    await answer(res, async () => {
+      const hosts = await ctx.hosts.list();
+      const rows = [];
+      for (const host of hosts) {
+        const settings = await readHostSettings(ctx, host.id);
+        if (!settings.enabled) continue;
+        rows.push({
+          id: host.id,
+          name: host.name || `${host.username}@${host.ip}`,
+          level: settings.level,
+        });
+      }
+      return { hosts: rows };
+    });
   });
 
   /**
    * @openapi
-   * /plugin-api/hello-world/notes:
-   *   post:
-   *     summary: Add a note for the signed-in user
+   * /plugin-api/incus/hosts/{hostId}/version:
+   *   get:
+   *     summary: Which Incus a host runs, to check the plugin can reach it
    *     tags:
-   *       - Hello World
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             properties:
-   *               text:
-   *                 type: string
+   *       - Incus
+   *     parameters:
+   *       - in: path
+   *         name: hostId
+   *         required: true
+   *         schema:
+   *           type: integer
    *     responses:
-   *       201:
-   *         description: Note added
+   *       200:
+   *         description: The client and server versions, or why incus didn't answer
    *       400:
-   *         description: Missing or empty text
+   *         description: Not a host id
+   *       403:
+   *         description: No permission, or Incus is off for the host
+   *       404:
+   *         description: No such host for this user
    */
-  router.post("/notes", async (req: Request, res: Response) => {
-    const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
-    if (!text || text.length > 1000) {
-      return res.status(400).json({ error: "text is required" });
-    }
-    const db = await client();
-    // No returning(): MySQL does not support it.
-    await db.insert(notesTable).values({ userId: actor(), text });
-    // SQLite only reaches disk when asked.
-    await ctx.db.persist();
-    res.status(201).json({ success: true });
+  router.get("/hosts/:hostId/version", async (req: Request, res: Response) => {
+    await answer(res, async () => {
+      const { hostId, settings } = await requireHost(
+        ctx,
+        req.params.hostId,
+        "read",
+      );
+      const result = await ctx.ssh.exec(
+        hostId,
+        incus(settings.incusCommand, ["version"]),
+        { purpose: "incus", timeoutMs: 15_000, maxOutputBytes: 4096 },
+      );
+      if (result.code !== 0) {
+        return {
+          ok: false,
+          error: (result.stderr || result.stdout).trim().slice(0, 500),
+        };
+      }
+      return { ok: true, ...parseVersion(result.stdout) };
+    });
   });
+}
+
+export function parseVersion(text: string): {
+  client: string | null;
+  server: string | null;
+} {
+  const find = (label: string) =>
+    new RegExp(`^${label} version:\\s*(\\S+)`, "mi").exec(text)?.[1] ?? null;
+  return { client: find("Client"), server: find("Server") };
 }

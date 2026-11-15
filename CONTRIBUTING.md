@@ -1,4 +1,4 @@
-# Contributing to Hello World
+# Contributing to the Incus plugin
 
 ## Development
 
