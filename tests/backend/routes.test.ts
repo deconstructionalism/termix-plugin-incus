@@ -202,9 +202,11 @@ describe("GET /hosts/:hostId/instances", () => {
 describe("GET .../processes", () => {
   const ps = [
     "100\n---",
-    "  4100 1000000 51200 3600 11 0::/lxc.payload.termix/init.scope node /app/index.js",
+    "  4100 1000000 51200 3600 11 node /app/index.js",
     "---",
     "4100 (node) S 1 1 1 0 -1 0 0 0 0 0 100 0 0 0 20 0 1 0 500 0 0",
+    "---",
+    "/proc/4100/cgroup:0::/lxc.payload.termix/init.scope",
     "",
   ].join("\n");
   const respond = (command: string) =>

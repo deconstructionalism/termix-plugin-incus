@@ -10,12 +10,23 @@ import {
 } from "../../src/backend/processes.js";
 
 const ps = [
-  "      1       0  12000      9000 1 0::/init.scope /run/current-system/systemd/lib/systemd/systemd",
-  "   4100 1000000  51200      3600 11 0::/lxc.payload.termix/init.scope node /app/dist/index.js --port 8080",
-  "   4200 1001000  20480      3500 1 0::/lxc.payload.termix/system.slice/app.service nginx: worker process",
-  "   4300 1000000   1024        30 1 0::/lxc.payload.evil/lxc.payload.termix sh -c sleep 100",
-  "   4400       0   2048      3600 1 0::/lxc.monitor.termix [lxc monitor] /var/lib/incus/containers termix",
-  "   4500 1065536   4096       600 3 0::/lxc.payload.lab_old-app/init.scope postgres -c password=hunter2",
+  "      1       0  12000      9000 1 /run/current-system/systemd/lib/systemd/systemd",
+  "   4100 1000000  51200      3600 11 node /app/dist/index.js --port 8080",
+  "   4200 1001000  20480      3500 1 nginx: worker process",
+  "   4300 1000000   1024        30 1 sh -c sleep 100",
+  "   4400       0   2048      3600 1 [lxc monitor] /var/lib/incus/containers termix",
+  "   4500 1065536   4096       600 3 postgres -c password=hunter2",
+  "   4600 1000000   8192      1200 14 celery worker",
+].join("\n");
+
+const cgroups = [
+  "/proc/1/cgroup:0::/init.scope",
+  "/proc/4100/cgroup:0::/lxc.payload.termix/init.scope",
+  "/proc/4200/cgroup:0::/lxc.payload.termix/system.slice/app.service",
+  "/proc/4300/cgroup:0::/lxc.payload.evil/lxc.payload.termix",
+  "/proc/4400/cgroup:0::/lxc.monitor.termix",
+  "/proc/4500/cgroup:0::/lxc.payload.lab_old-app/init.scope",
+  "/proc/4600/cgroup:0::/lxc.payload.authentik-worker-with-a-long-name",
 ].join("\n");
 
 const stat = (ticks: Record<number, [number, number]>) =>
@@ -27,7 +38,7 @@ const stat = (ticks: Record<number, [number, number]>) =>
     .join("\n");
 
 const snapshot = (at: number, ticks: Record<number, [number, number]>) =>
-  parseSnapshot(`100\n---\n${ps}\n---\n${stat(ticks)}\n`, at);
+  parseSnapshot(`100\n---\n${ps}\n---\n${stat(ticks)}\n---\n${cgroups}\n`, at);
 
 describe("processes", () => {
   it("groups host processes by their container, trusting only the first payload cgroup", () => {
@@ -38,6 +49,17 @@ describe("processes", () => {
       4300,
     ]);
     expect(containerFromCgroup("0::/lxc.monitor.termix")).toBeNull();
+  });
+
+  it("matches long container names in full (ps cuts its cgroup column)", () => {
+    const snap = snapshot(0, {});
+    expect(
+      containerProcesses(
+        snap,
+        "authentik-worker-with-a-long-name",
+        1000000,
+      ).map((p) => p.pid),
+    ).toEqual([4600]);
   });
 
   it("names a container's cgroup by project", () => {
@@ -76,11 +98,11 @@ describe("processes", () => {
   it("reads a VM's processes as they are inside", () => {
     const rows = instanceProcesses(snapshot(0, {}));
     expect(rows[0].innerUid).toBe(0);
-    expect(rows).toHaveLength(6);
+    expect(rows).toHaveLength(7);
   });
 
   it("falls back to 100 ticks a second", () => {
-    expect(parseSnapshot("\n---\n\n---\n", 0).hz).toBe(100);
+    expect(parseSnapshot("\n---\n\n---\n\n---\n", 0).hz).toBe(100);
   });
 });
 

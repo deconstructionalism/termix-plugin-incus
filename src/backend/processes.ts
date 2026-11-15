@@ -14,9 +14,12 @@ export interface ProcessRow {
 export const PROCESS_SCRIPT = [
   "getconf CLK_TCK 2>/dev/null || echo 100",
   "echo ---",
-  "ps -eww -o pid=,uid=,rss=,etimes=,nlwp=,cgroup=,args=",
+  "ps -eww -o pid=,uid=,rss=,etimes=,nlwp=,args=",
   "echo ---",
   "cat /proc/[0-9]*/stat 2>/dev/null",
+  "echo ---",
+  // ps cuts its cgroup column at 27 characters, so read the kernel's own
+  "grep -H '' /proc/[0-9]*/cgroup 2>/dev/null",
   "",
 ].join("\n");
 
@@ -83,17 +86,32 @@ export interface Snapshot {
   rows: Array<{ row: ProcessRow; cgroup: string }>;
 }
 
+// grep -H lines: "/proc/<pid>/cgroup:<hierarchy line>"
+export function parseCgroups(text: string): Map<number, string> {
+  const out = new Map<number, string>();
+  for (const line of text.split("\n")) {
+    const m = /^\/proc\/(\d+)\/cgroup:(.*)$/.exec(line);
+    if (!m) continue;
+    const pid = Number(m[1]);
+    const before = out.get(pid);
+    out.set(pid, before ? `${before};${m[2]}` : m[2]);
+  }
+  return out;
+}
+
 export function parseSnapshot(text: string, at: number): Snapshot {
-  const [hzText = "", psText = "", statText = ""] = text.split(/^---$/m);
+  const [hzText = "", psText = "", statText = "", cgroupText = ""] =
+    text.split(/^---$/m);
   const hz = Number(hzText.trim()) > 0 ? Number(hzText.trim()) : 100;
+  const cgroups = parseCgroups(cgroupText);
   const rows: Snapshot["rows"] = [];
   for (const line of psText.split("\n")) {
     const parts = line.trim().split(/\s+/);
-    if (parts.length < 6) continue;
+    if (parts.length < 5) continue;
     const [pid, uid, rss, elapsed, threads] = parts.slice(0, 5).map(Number);
     if (![pid, uid, rss, elapsed, threads].every(Number.isFinite)) continue;
     rows.push({
-      cgroup: parts[5],
+      cgroup: cgroups.get(pid) ?? "",
       row: {
         pid,
         uid,
@@ -102,7 +120,7 @@ export function parseSnapshot(text: string, at: number): Snapshot {
         rss: rss * 1024,
         elapsedSeconds: elapsed,
         threads,
-        command: redactArgs(parts.slice(6).join(" ")),
+        command: redactArgs(parts.slice(5).join(" ")),
       },
     });
   }
