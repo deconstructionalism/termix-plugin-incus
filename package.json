@@ -51,5 +51,8 @@
   "overrides": {
     "glob@12": "^14.0.4",
     "minimatch@10": "^11.0.5"
+  },
+  "dependencies": {
+    "lucide-react": "^1.73.0"
   }
 }
