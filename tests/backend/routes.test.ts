@@ -327,7 +327,11 @@ describe("GET .../logs and .../details", () => {
           : { code: 1, stderr: "tail: cannot open: Permission denied" }),
     });
     const { body } = await get("/hosts/1/instances/default/termix/logs");
-    expect(body).toMatchObject({ ok: false, reason: "unreadable" });
+    expect(body).toMatchObject({
+      ok: false,
+      reason: "unreadable",
+      path: "/var/log/incus/termix/console.log",
+    });
   });
 
   it("gives details with secrets hidden", async () => {

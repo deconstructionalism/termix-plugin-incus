@@ -17,6 +17,7 @@ export type LogAnswer =
       ok: false;
       reason: "no-agent" | "no-source" | "unreadable" | "failed";
       error: string;
+      path?: string;
     };
 
 const NOT_FOUND =
@@ -91,16 +92,9 @@ export async function readLogs(
   // A running container's console buffer is consumed by reading it, so read
   // the file LXC writes the same output to instead. Stopped instances are
   // served from that file by Incus itself.
+  const path = `${LOG_DIR}/${cgroupName(instance.project, instance.name)}/console.log`;
   const console = running
-    ? await run(
-        commandLine([
-          "tail",
-          "-n",
-          String(LOG_LINES),
-          "--",
-          `${LOG_DIR}/${cgroupName(instance.project, instance.name)}/console.log`,
-        ]),
-      )
+    ? await run(commandLine(["tail", "-n", String(LOG_LINES), "--", path]))
     : await run(
         incus(settings.incusCommand, [
           "console",
@@ -121,7 +115,7 @@ export async function readLogs(
   }
   const why = console.stderr + console.stdout;
   if (DENIED.test(why)) {
-    return { ok: false, reason: "unreadable", error: firstLine(why) };
+    return { ok: false, reason: "unreadable", error: firstLine(why), path };
   }
   if (NOT_FOUND.test(why)) {
     return { ok: false, reason: "no-source", error: firstLine(why) };

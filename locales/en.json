@@ -123,8 +123,9 @@
     },
     "no-agent": "This VM has no Incus agent, so its logs can't be read.",
     "no-source": "This instance has no journal and no console output.",
-    "unreadable": "The console log file can't be read by this host's SSH user",
-    "failed": "Couldn't read the logs"
+    "unreadable": "This container's console log isn't available to this host's SSH user",
+    "failed": "Couldn't read the logs",
+    "unreadableWhy": "App containers have no journal, and Incus keeps their console output in a file only root can read. Its API doesn't serve that file yet. Read it on the host as root:"
   },
   "details": {
     "loading": "Reading details…",

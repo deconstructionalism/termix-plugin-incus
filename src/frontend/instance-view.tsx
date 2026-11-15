@@ -29,7 +29,7 @@ export interface Process {
   command: string;
 }
 
-type Failure = { ok: false; reason: string; error: string };
+type Failure = { ok: false; reason: string; error: string; path?: string };
 export type ProcessAnswer =
   { ok: true; processes: Process[]; truncated: boolean } | Failure;
 export type LogAnswer =
@@ -120,9 +120,15 @@ function Problem({
       tone={answer.reason === "failed" ? "destructive" : "default"}
       title={t(`${prefix}.${answer.reason}`)}
     >
-      {answer.reason === "failed" || answer.reason === "unreadable"
-        ? answer.error
-        : null}
+      {answer.reason === "failed" ? answer.error : null}
+      {answer.reason === "unreadable" ? (
+        <>
+          <p>{t(`${prefix}.unreadableWhy`)}</p>
+          {answer.path ? (
+            <p className="font-mono text-xs">{answer.path}</p>
+          ) : null}
+        </>
+      ) : null}
     </NoticePanel>
   );
 }
