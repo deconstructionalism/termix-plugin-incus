@@ -32,6 +32,21 @@
       },
       "allowed": "any",
       "note": "Needs a real host running Incus to answer; refusals are still checked"
+    },
+    "GET /plugin-api/incus/hosts/:hostId/instances/:project/:name/processes": {
+      "access": "user",
+      "permission": "incus.read",
+      "resource": {
+        "kind": "host",
+        "min": "connect"
+      },
+      "params": {
+        "hostId": "host",
+        "project": "default",
+        "name": "authz-instance"
+      },
+      "allowed": "any",
+      "note": "Needs a real host running Incus to answer; refusals are still checked"
     }
   }
 }

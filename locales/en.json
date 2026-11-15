@@ -84,6 +84,26 @@
     "noAgent": "no agent",
     "notReported": "not reported",
     "vm": "VM",
-    "container": "Container"
+    "container": "Container",
+    "openProcesses": "Show processes"
+  },
+  "processes": {
+    "title": "Processes in {{name}}",
+    "loading": "Reading processes…",
+    "empty": "No processes.",
+    "search": "Search commands",
+    "byCpu": "CPU",
+    "byMemory": "Memory",
+    "pid": "PID",
+    "user": "User",
+    "cpu": "CPU",
+    "memory": "Memory",
+    "time": "Running",
+    "command": "Command",
+    "hostUid": "host {{uid}}",
+    "no-agent": "This VM has no Incus agent, so its processes can't be read.",
+    "stopped": "The instance isn't running.",
+    "failed": "Couldn't read the processes",
+    "truncated": "Showing the first 1000 processes."
   }
 }

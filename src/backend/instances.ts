@@ -34,8 +34,10 @@ export interface InstanceRow {
   disks: InstanceDisk[];
   network: { received: number; sent: number } | null;
   processes: number | null;
-  // a VM reports memory, addresses and processes only through its agent
+  // a VM reports CPU, addresses and processes only through its agent
   agent: boolean | null;
+  // host uid of the instance's root, to show processes' users as inside
+  idmapBase: number | null;
 }
 
 type Json = Record<string, unknown>;
@@ -112,6 +114,11 @@ function disks(state: Json, devices: Json): InstanceDisk[] {
   });
 }
 
+function idmapBase(config: Json): number | null {
+  const base = Number(str(config["volatile.idmap.base"]));
+  return Number.isSafeInteger(base) && base >= 0 ? base : null;
+}
+
 export function parseInstance(raw: unknown): InstanceRow | null {
   const i = obj(raw);
   const name = str(i.name);
@@ -157,6 +164,7 @@ export function parseInstance(raw: unknown): InstanceRow | null {
     processes:
       running && processes !== null && processes >= 0 ? processes : null,
     agent,
+    idmapBase: idmapBase(config),
   };
 }
 

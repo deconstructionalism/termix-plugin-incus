@@ -35,6 +35,11 @@ async function start(options: {
   permissions?: string[];
   hostSettings?: Record<number, Record<string, unknown>>;
   answer?: { stdout?: string; stderr?: string; code?: number };
+  respond?: (command: string) => {
+    stdout?: string;
+    stderr?: string;
+    code?: number;
+  };
 }) {
   let router: Router | null = null;
   commands = [];
@@ -52,9 +57,11 @@ async function start(options: {
       await mock.ctx.settings.setHost(Number(id), key, value);
     }
   }
-  const answer = options.answer ?? {};
   mock.ctx.ssh.exec = (async (_host: unknown, command: string) => {
     commands.push(command);
+    const answer = options.respond
+      ? options.respond(command)
+      : (options.answer ?? {});
     return {
       stdout: answer.stdout ?? "",
       stderr: answer.stderr ?? "",
@@ -189,6 +196,72 @@ describe("GET /hosts/:hostId/instances", () => {
     get = await start({});
     expect((await get("/hosts/1/instances")).status).toBe(403);
     expect(commands).toEqual([]);
+  });
+});
+
+describe("GET .../processes", () => {
+  const ps = [
+    "100\n---",
+    "  4100 1000000 51200 3600 0::/lxc.payload.termix/init.scope node /app/index.js",
+    "---",
+    "4100 (node) S 1 1 1 0 -1 0 0 0 0 0 100 0 0 0 20 0 1 0 500 0 0",
+    "",
+  ].join("\n");
+  const respond = (command: string) =>
+    command.startsWith("incus list") ? { stdout: listJson } : { stdout: ps };
+
+  it("lists a container's processes from the host", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      respond,
+    });
+    const { status, body } = await get(
+      "/hosts/1/instances/default/termix/processes",
+    );
+    expect(status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.processes.map((p: { pid: number }) => p.pid)).toEqual([4100]);
+    expect(commands).toEqual([
+      "incus list --all-projects --format json",
+      "sh -s",
+    ]);
+  });
+
+  it("says a VM without its agent can't be read", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      respond,
+    });
+    const { body } = await get("/hosts/1/instances/default/haos/processes");
+    expect(body).toMatchObject({ ok: false, reason: "no-agent" });
+    expect(commands).toEqual(["incus list --all-projects --format json"]);
+  });
+
+  it("reads a VM with its agent through incus exec", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      respond,
+    });
+    await get("/hosts/1/instances/default/studio/processes");
+    expect(commands[1]).toMatch(
+      /^incus exec --project default --env PATH=\S+ -- studio sh -s$/,
+    );
+  });
+
+  it("refuses names that aren't real instances", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      respond,
+    });
+    expect(
+      (await get("/hosts/1/instances/default/nope/processes")).status,
+    ).toBe(404);
+    expect((await get("/hosts/1/instances/default/a;b/processes")).status).toBe(
+      400,
+    );
+    expect((await get("/hosts/1/instances/x$y/termix/processes")).status).toBe(
+      400,
+    );
   });
 });
 

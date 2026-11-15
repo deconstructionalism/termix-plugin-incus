@@ -11,6 +11,7 @@ export const INCUS_COMMANDS = {
 export type IncusCommand = keyof typeof INCUS_COMMANDS;
 
 export const INSTANCE_NAME = /^[A-Za-z](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/;
+export const PROJECT_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9_-]{0,61}[A-Za-z0-9])?$/;
 
 const SHELL_PATH = /^\/[A-Za-z0-9_./-]{1,200}$/;
 

@@ -100,6 +100,41 @@ describe(`${manifest.id} activate`, () => {
     expect(screen.getByText("jellyfin")).toBeTruthy();
   });
 
+  it("opens an instance's processes", async () => {
+    const get = vi.fn(async (path: string) => ({
+      data: path.endsWith("/processes")
+        ? {
+            ok: true,
+            truncated: false,
+            processes: [
+              {
+                pid: 7,
+                uid: 1000000,
+                innerUid: 0,
+                cpuPercent: 1.5,
+                rss: 1048576,
+                elapsedSeconds: 3700,
+                command: "node /app/index.js",
+              },
+            ],
+          }
+        : { ok: true, pollSeconds: 15, instances: [instance({})] },
+    }));
+    rendered = await renderWithApp(plugin, {
+      manifest,
+      locales,
+      api: { get } as never,
+    });
+    rendered.renderTab("incus", { isVisible: true, host } as never);
+    fireEvent.click(await screen.findByText("termix"));
+    expect(await screen.findByText("node /app/index.js")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith(
+      "/hosts/1/instances/default/termix/processes",
+    );
+    expect(screen.getByText("root")).toBeTruthy();
+    expect(screen.getByText("1h 1m")).toBeTruthy();
+  });
+
   it("says why Incus didn't answer", async () => {
     await show({ ok: false, error: "incus: command not found" });
     expect(await screen.findByText("incus: command not found")).toBeTruthy();

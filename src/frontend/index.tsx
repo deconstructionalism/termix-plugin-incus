@@ -19,6 +19,7 @@ import {
 } from "@termix-ssh/plugin-sdk/ui";
 import { Boxes } from "lucide-react";
 import { bytes, limitBytes, percentOf } from "./format";
+import { ProcessesView } from "./processes-view";
 
 const TAB_ID = "incus";
 
@@ -66,6 +67,9 @@ function createTab(app: TermixApp) {
     const [failed, setFailed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [query, setQuery] = useState("");
+    const [open, setOpen] = useState<{ project: string; name: string } | null>(
+      null,
+    );
     const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hostId = host?.id;
 
@@ -156,6 +160,7 @@ function createTab(app: TermixApp) {
                 key={`${i.project}/${i.name}`}
                 instance={i}
                 showProject={projects > 1}
+                onOpen={() => setOpen({ project: i.project, name: i.name })}
               />
             ))}
           </tbody>
@@ -183,6 +188,15 @@ function createTab(app: TermixApp) {
         }
       >
         {body}
+        {open && hostId ? (
+          <ProcessesView
+            app={app}
+            hostId={hostId}
+            project={open.project}
+            name={open.name}
+            onClose={() => setOpen(null)}
+          />
+        ) : null}
       </PanelShell>
     );
   };
@@ -191,9 +205,11 @@ function createTab(app: TermixApp) {
 function InstanceRow({
   instance: i,
   showProject,
+  onOpen,
 }: {
   instance: Instance;
   showProject: boolean;
+  onOpen: () => void;
 }) {
   const { t } = useTranslation();
   const noAgent = i.agent === false;
@@ -208,7 +224,7 @@ function InstanceRow({
     dash
   );
   return (
-    <DataTableRow>
+    <DataTableRow onClick={onOpen} title={t("list.openProcesses")}>
       <td>
         <div className="font-medium">{i.name}</div>
         <div className="text-xs text-muted-foreground">

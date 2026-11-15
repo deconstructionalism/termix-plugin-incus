@@ -1,6 +1,6 @@
 The Incus plugin shows the [Incus](https://linuxcontainers.org/incus/) containers and VMs on your hosts, under each host, over the SSH login Termix already has for it.
 
-This is an early version: it lists a host's instances with their usage. Processes, logs, shells and actions come next.
+This is an early version: it lists a host's instances with their usage and processes. Logs, shells and actions come next.
 
 ## Turn it on
 
@@ -29,6 +29,15 @@ People also need the matching permission (Read, Operate or Manage Incus instance
 
 Shells are separate: a host turns them on with Allow shells, and people need the Open shells permission. A root shell in an instance can read everything it holds, secrets included, so they're off by default.
 
+## Processes
+
+Click an instance to see its processes: PID, user, CPU, memory, how long each has run and its command line. It refreshes every 5 seconds while open.
+
+- **Containers** are read from the host, so it works for images with no `ps` in them. Users show as they are inside the container (`root`, `1000`), worked out from the container's id map.
+- **VMs** are read inside, through the Incus agent, and need `ps` and `sh` in the VM. Without the agent it says so.
+- CPU shows from the second refresh.
+- It needs the host's SSH user to see other users' processes, which it can unless `/proc` is mounted with `hidepid`.
+
 ## Secret values
 
-Values of `environment.*` keys, and of keys whose names look like secrets (password, secret, token, key), never leave the Termix server. Hiding them keeps them off the page; it doesn't stop someone with a shell in the instance or on the host from reading them.
+Values of `environment.*` keys, and of keys whose names look like secrets (password, secret, token, key), never leave the Termix server. Command lines get the same treatment: a value after an argument whose name looks like a secret (`--password=...`, `-c password=...`, `TOKEN=...`) or a password in a URL is blanked. Hiding them keeps them off the page; it doesn't stop someone with a shell in the instance or on the host from reading them.

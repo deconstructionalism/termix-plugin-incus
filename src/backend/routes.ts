@@ -3,7 +3,8 @@ import type { PluginContext } from "@termix-ssh/plugin-sdk/backend";
 import { Refusal, requireHost } from "./access.js";
 import { incus } from "./commands.js";
 import { InstanceLists, ListError } from "./list.js";
-import { readHostSettings } from "./settings.js";
+import { Processes, ProcessError } from "./process-service.js";
+import { INSTANCE_NAME, PROJECT_NAME, readHostSettings } from "./settings.js";
 
 async function answer(
   res: Response,
@@ -23,6 +24,7 @@ async function answer(
 export function registerRoutes(router: Router, ctx: PluginContext): void {
   router.use(ctx.rbac.require("read") as never);
   const lists = new InstanceLists(ctx);
+  const processes = new Processes(ctx);
 
   /**
    * @openapi
@@ -143,6 +145,80 @@ export function registerRoutes(router: Router, ctx: PluginContext): void {
         } catch (error) {
           if (error instanceof ListError)
             return { ok: false, error: error.message };
+          throw error;
+        }
+      });
+    },
+  );
+
+  /**
+   * @openapi
+   * /plugin-api/incus/hosts/{hostId}/instances/{project}/{name}/processes:
+   *   get:
+   *     summary: An instance's processes with CPU, memory and command line, secret looking arguments blanked
+   *     tags:
+   *       - Incus
+   *     parameters:
+   *       - in: path
+   *         name: hostId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - in: path
+   *         name: project
+   *         required: true
+   *         schema:
+   *           type: string
+   *       - in: path
+   *         name: name
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: The processes, or why they couldn't be read
+   *       400:
+   *         description: Not a host id or an instance name
+   *       403:
+   *         description: No permission, or Incus is off for the host
+   *       404:
+   *         description: No such host or instance
+   */
+  router.get(
+    "/hosts/:hostId/instances/:project/:name/processes",
+    async (req: Request, res: Response) => {
+      await answer(res, async () => {
+        const project = String(req.params.project);
+        const name = String(req.params.name);
+        if (!PROJECT_NAME.test(project) || !INSTANCE_NAME.test(name)) {
+          throw new Refusal(400, "Not an instance name");
+        }
+        const { hostId, settings } = await requireHost(
+          ctx,
+          req.params.hostId,
+          "read",
+        );
+        let instance;
+        try {
+          instance = (await lists.get(hostId, settings)).find(
+            (i) => i.project === project && i.name === name,
+          );
+        } catch (error) {
+          if (error instanceof ListError) {
+            return { ok: false, reason: "failed", error: error.message };
+          }
+          throw error;
+        }
+        if (!instance) throw new Refusal(404, "Instance not found");
+        try {
+          return {
+            ok: true,
+            ...(await processes.list(hostId, settings, instance)),
+          };
+        } catch (error) {
+          if (error instanceof ProcessError) {
+            return { ok: false, reason: error.reason, error: error.message };
+          }
           throw error;
         }
       });
