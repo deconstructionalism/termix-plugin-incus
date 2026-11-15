@@ -10,12 +10,12 @@ import {
 } from "../../src/backend/processes.js";
 
 const ps = [
-  "      1       0  12000      9000 0::/init.scope /run/current-system/systemd/lib/systemd/systemd",
-  "   4100 1000000  51200      3600 0::/lxc.payload.termix/init.scope node /app/dist/index.js --port 8080",
-  "   4200 1001000  20480      3500 0::/lxc.payload.termix/system.slice/app.service nginx: worker process",
-  "   4300 1000000   1024        30 0::/lxc.payload.evil/lxc.payload.termix sh -c sleep 100",
-  "   4400       0   2048      3600 0::/lxc.monitor.termix [lxc monitor] /var/lib/incus/containers termix",
-  "   4500 1065536   4096       600 0::/lxc.payload.lab_old-app/init.scope postgres -c password=hunter2",
+  "      1       0  12000      9000 1 0::/init.scope /run/current-system/systemd/lib/systemd/systemd",
+  "   4100 1000000  51200      3600 11 0::/lxc.payload.termix/init.scope node /app/dist/index.js --port 8080",
+  "   4200 1001000  20480      3500 1 0::/lxc.payload.termix/system.slice/app.service nginx: worker process",
+  "   4300 1000000   1024        30 1 0::/lxc.payload.evil/lxc.payload.termix sh -c sleep 100",
+  "   4400       0   2048      3600 1 0::/lxc.monitor.termix [lxc monitor] /var/lib/incus/containers termix",
+  "   4500 1065536   4096       600 3 0::/lxc.payload.lab_old-app/init.scope postgres -c password=hunter2",
 ].join("\n");
 
 const stat = (ticks: Record<number, [number, number]>) =>
@@ -57,6 +57,7 @@ describe("processes", () => {
     expect(nginx.innerUid).toBe(1000);
     expect(node.rss).toBe(51200 * 1024);
     expect(node.command).toBe("node /app/dist/index.js --port 8080");
+    expect(node.threads).toBe(11);
   });
 
   it("works out CPU from two snapshots of the same process", () => {

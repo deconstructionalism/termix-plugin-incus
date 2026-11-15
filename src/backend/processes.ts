@@ -6,6 +6,7 @@ export interface ProcessRow {
   cpuPercent: number | null;
   rss: number;
   elapsedSeconds: number;
+  threads: number;
   command: string;
 }
 
@@ -13,7 +14,7 @@ export interface ProcessRow {
 export const PROCESS_SCRIPT = [
   "getconf CLK_TCK 2>/dev/null || echo 100",
   "echo ---",
-  "ps -eww -o pid=,uid=,rss=,etimes=,cgroup=,args=",
+  "ps -eww -o pid=,uid=,rss=,etimes=,nlwp=,cgroup=,args=",
   "echo ---",
   "cat /proc/[0-9]*/stat 2>/dev/null",
   "",
@@ -88,11 +89,11 @@ export function parseSnapshot(text: string, at: number): Snapshot {
   const rows: Snapshot["rows"] = [];
   for (const line of psText.split("\n")) {
     const parts = line.trim().split(/\s+/);
-    if (parts.length < 5) continue;
-    const [pid, uid, rss, elapsed] = parts.slice(0, 4).map(Number);
-    if (![pid, uid, rss, elapsed].every(Number.isFinite)) continue;
+    if (parts.length < 6) continue;
+    const [pid, uid, rss, elapsed, threads] = parts.slice(0, 5).map(Number);
+    if (![pid, uid, rss, elapsed, threads].every(Number.isFinite)) continue;
     rows.push({
-      cgroup: parts[4],
+      cgroup: parts[5],
       row: {
         pid,
         uid,
@@ -100,7 +101,8 @@ export function parseSnapshot(text: string, at: number): Snapshot {
         cpuPercent: null,
         rss: rss * 1024,
         elapsedSeconds: elapsed,
-        command: redactArgs(parts.slice(5).join(" ")),
+        threads,
+        command: redactArgs(parts.slice(6).join(" ")),
       },
     });
   }

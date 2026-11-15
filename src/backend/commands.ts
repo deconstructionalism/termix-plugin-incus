@@ -3,7 +3,7 @@ import { INCUS_COMMANDS, type IncusCommand } from "./settings.js";
 // SSH runs commands through the user's shell, so words that could mean more
 // than themselves are refused, not quoted
 const SAFE_WORD =
-  /^[A-Za-z0-9][A-Za-z0-9_.:/=,-]*$|^--?[A-Za-z][A-Za-z0-9-]*$|^--$/;
+  /^[A-Za-z0-9][A-Za-z0-9_.:/=,-]*$|^\/[A-Za-z0-9_.:/=,-]+$|^--?[A-Za-z][A-Za-z0-9-]*$|^--$/;
 
 export class UnsafeWordError extends Error {
   constructor(word: string) {

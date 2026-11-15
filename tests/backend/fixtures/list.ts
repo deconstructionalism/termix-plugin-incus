@@ -35,7 +35,12 @@ export const instances = [
         path: "/app/data",
       },
       eth0: { type: "nic", network: "incusbr0", "ipv4.address": "10.0.100.66" },
-      secretdev: { type: "unix-char", source: `/dev/${SECRET}` },
+      cephvol: {
+        type: "disk",
+        source: "vol",
+        pool: "ceph",
+        "ceph.user_key": SECRET,
+      },
     },
     snapshots: [
       { name: "snap0", expanded_config: { "environment.X": SECRET } },

@@ -202,7 +202,7 @@ describe("GET /hosts/:hostId/instances", () => {
 describe("GET .../processes", () => {
   const ps = [
     "100\n---",
-    "  4100 1000000 51200 3600 0::/lxc.payload.termix/init.scope node /app/index.js",
+    "  4100 1000000 51200 3600 11 0::/lxc.payload.termix/init.scope node /app/index.js",
     "---",
     "4100 (node) S 1 1 1 0 -1 0 0 0 0 0 100 0 0 0 20 0 1 0 500 0 0",
     "",
@@ -262,6 +262,81 @@ describe("GET .../processes", () => {
     expect((await get("/hosts/1/instances/x$y/termix/processes")).status).toBe(
       400,
     );
+  });
+});
+
+describe("GET .../logs and .../details", () => {
+  const listOnly = (command: string) =>
+    command.startsWith("incus list") ? { stdout: listJson } : null;
+
+  it("reads the journal inside when there is one", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      respond: (c) =>
+        listOnly(c) ?? { stdout: "2026-11-15T01:00:00 host app[1]: up\n" },
+    });
+    const { body } = await get("/hosts/1/instances/default/termix/logs");
+    expect(body).toMatchObject({ ok: true, source: "journal" });
+    expect(commands[1]).toMatch(
+      /^incus exec --project default --env PATH=\S+ -- termix journalctl --no-pager -n 500 -o short-iso$/,
+    );
+  });
+
+  it("falls back to the console log file, never the consuming buffer", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      respond: (c) =>
+        listOnly(c) ??
+        (c.includes("journalctl")
+          ? { code: 1, stderr: "Error: Command not found" }
+          : { stdout: "listening on 8080\n" }),
+    });
+    const { body } = await get("/hosts/1/instances/default/termix/logs");
+    expect(body).toMatchObject({
+      ok: true,
+      source: "console",
+      text: "listening on 8080\n",
+    });
+    expect(commands[2]).toBe(
+      "tail -n 500 -- /var/log/incus/termix/console.log",
+    );
+    expect(commands.some((c) => c.includes("console --show-log"))).toBe(false);
+  });
+
+  it("asks Incus for a stopped instance's saved console log", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      respond: (c) => listOnly(c) ?? { stdout: "bye\n" },
+    });
+    const { body } = await get("/hosts/1/instances/lab/old-app/logs");
+    expect(body).toMatchObject({ ok: true, source: "console" });
+    expect(commands[1]).toBe(
+      "incus console --project lab --show-log -- old-app",
+    );
+  });
+
+  it("says when the log file can't be read", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      respond: (c) =>
+        listOnly(c) ??
+        (c.includes("journalctl")
+          ? { code: 127, stderr: "journalctl: not found" }
+          : { code: 1, stderr: "tail: cannot open: Permission denied" }),
+    });
+    const { body } = await get("/hosts/1/instances/default/termix/logs");
+    expect(body).toMatchObject({ ok: false, reason: "unreadable" });
+  });
+
+  it("gives details with secrets hidden", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      respond: (c) => listOnly(c) ?? {},
+    });
+    const { body } = await get("/hosts/1/instances/default/termix/details");
+    expect(body.ok).toBe(true);
+    expect(JSON.stringify(body)).not.toContain(SECRET);
+    expect(body.details.profiles).toEqual(["default", "apps"]);
   });
 });
 

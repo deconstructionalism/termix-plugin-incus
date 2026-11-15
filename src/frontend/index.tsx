@@ -19,7 +19,7 @@ import {
 } from "@termix-ssh/plugin-sdk/ui";
 import { Boxes } from "lucide-react";
 import { bytes, limitBytes, percentOf } from "./format";
-import { ProcessesView } from "./processes-view";
+import { InstanceView } from "./instance-view";
 
 const TAB_ID = "incus";
 
@@ -151,7 +151,7 @@ function createTab(app: TermixApp) {
               <th>{t("list.cpu")}</th>
               <th>{t("list.memory")}</th>
               <th>{t("list.disk")}</th>
-              <th>{t("list.processes")}</th>
+              <th title={t("list.tasksHint")}>{t("list.tasks")}</th>
             </tr>
           </thead>
           <tbody>
@@ -189,7 +189,7 @@ function createTab(app: TermixApp) {
       >
         {body}
         {open && hostId ? (
-          <ProcessesView
+          <InstanceView
             app={app}
             hostId={hostId}
             project={open.project}
@@ -224,7 +224,7 @@ function InstanceRow({
     dash
   );
   return (
-    <DataTableRow onClick={onOpen} title={t("list.openProcesses")}>
+    <DataTableRow onClick={onOpen} title={t("list.open")}>
       <td>
         <div className="font-medium">{i.name}</div>
         <div className="text-xs text-muted-foreground">

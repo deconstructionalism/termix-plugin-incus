@@ -1,6 +1,6 @@
 The Incus plugin shows the [Incus](https://linuxcontainers.org/incus/) containers and VMs on your hosts, under each host, over the SSH login Termix already has for it.
 
-This is an early version: it lists a host's instances with their usage and processes. Logs, shells and actions come next.
+This is an early version: it lists a host's instances with their usage, and shows each one's processes, logs and details. Shells and actions come next.
 
 ## Turn it on
 
@@ -31,12 +31,22 @@ Shells are separate: a host turns them on with Allow shells, and people need the
 
 ## Processes
 
-Click an instance to see its processes: PID, user, CPU, memory, how long each has run and its command line. It refreshes every 5 seconds while open.
+Click an instance to see its processes: PID, user, CPU, memory, threads, how long each has run and its command line. The list's Tasks column counts threads too, as Incus does, so it's usually higher than the number of processes. It refreshes every 5 seconds while open.
 
 - **Containers** are read from the host, so it works for images with no `ps` in them. Users show as they are inside the container (`root`, `1000`), worked out from the container's id map.
 - **VMs** are read inside, through the Incus agent, and need `ps` and `sh` in the VM. Without the agent it says so.
 - CPU shows from the second refresh.
 - It needs the host's SSH user to see other users' processes, which it can unless `/proc` is mounted with `hidepid`.
+
+## Logs
+
+- **The journal**, read inside the instance, when it has one (system containers and VMs with the agent).
+- **Console output** otherwise, which is what an app container prints. It comes from the file Incus keeps at `/var/log/incus/<instance>/console.log`, so the host's SSH user must be able to read it; Incus makes that folder readable by root only. The plugin never uses `incus console --show-log` on a running container, because reading the console buffer that way empties it.
+- The last 500 lines, with a filter.
+
+## Details
+
+Config, devices and snapshots, from the same answer as the list. Values of `environment.*`, `cloud-init.*` and keys whose names look like secrets are hidden on the server.
 
 ## Secret values
 

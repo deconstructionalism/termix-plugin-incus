@@ -1,5 +1,6 @@
 import type { PluginContext } from "@termix-ssh/plugin-sdk/backend";
 import { incus } from "./commands.js";
+import { parseDetails, type InstanceDetails } from "./details.js";
 import {
   parseInstances,
   withCpuPercent,
@@ -19,6 +20,7 @@ interface Entry {
   at: number;
   rows: InstanceRow[];
   sample: Sample | null;
+  details: Map<string, InstanceDetails>;
   pending: Promise<InstanceRow[]> | null;
 }
 
@@ -41,6 +43,7 @@ export class InstanceLists {
       at: 0,
       rows: [],
       sample: null,
+      details: new Map(),
       pending: null,
     };
     this.entries.set(hostId, entry);
@@ -52,6 +55,15 @@ export class InstanceLists {
       entry.pending = null;
     });
     return entry.pending;
+  }
+
+  // from the latest list, already redacted
+  details(
+    hostId: number,
+    project: string,
+    name: string,
+  ): InstanceDetails | null {
+    return this.entries.get(hostId)?.details.get(`${project}/${name}`) ?? null;
   }
 
   forget(hostId: number): void {
@@ -83,8 +95,16 @@ export class InstanceLists {
       );
     }
     let rows: InstanceRow[];
+    const details = new Map<string, InstanceDetails>();
     try {
       rows = parseInstances(result.stdout);
+      for (const raw of JSON.parse(result.stdout) as unknown[]) {
+        const i = raw as { name?: unknown; project?: unknown };
+        if (typeof i.name !== "string") continue;
+        const project =
+          typeof i.project === "string" && i.project ? i.project : "default";
+        details.set(`${project}/${i.name}`, parseDetails(raw));
+      }
     } catch {
       throw new ListError("Incus's answer wasn't readable");
     }
@@ -93,6 +113,7 @@ export class InstanceLists {
     entry.at = at;
     entry.rows = withCpu;
     entry.sample = sample;
+    entry.details = details;
     return withCpu;
   }
 }

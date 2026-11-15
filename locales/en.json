@@ -76,7 +76,6 @@
     "cpu": "CPU",
     "memory": "Memory",
     "disk": "Disk",
-    "processes": "Processes",
     "search": "Search instances",
     "refresh": "Refresh",
     "empty": "No instances on this host.",
@@ -85,10 +84,11 @@
     "notReported": "not reported",
     "vm": "VM",
     "container": "Container",
-    "openProcesses": "Show processes"
+    "open": "Show processes, logs and details",
+    "tasks": "Tasks",
+    "tasksHint": "Processes and their threads, as Incus counts them"
   },
   "processes": {
-    "title": "Processes in {{name}}",
     "loading": "Reading processes…",
     "empty": "No processes.",
     "search": "Search commands",
@@ -104,6 +104,42 @@
     "no-agent": "This VM has no Incus agent, so its processes can't be read.",
     "stopped": "The instance isn't running.",
     "failed": "Couldn't read the processes",
-    "truncated": "Showing the first 1000 processes."
+    "truncated": "Showing the first 1000 processes.",
+    "threads": "Threads",
+    "total": "{{processes}} processes, {{threads}} threads"
+  },
+  "instance": {
+    "processes": "Processes",
+    "logs": "Logs",
+    "details": "Details"
+  },
+  "logs": {
+    "loading": "Reading logs…",
+    "search": "Filter lines",
+    "empty": "No log lines.",
+    "source": {
+      "journal": "Journal, last 500 lines",
+      "console": "Console output, last 500 lines"
+    },
+    "no-agent": "This VM has no Incus agent, so its logs can't be read.",
+    "no-source": "This instance has no journal and no console output.",
+    "unreadable": "The console log file can't be read by this host's SSH user",
+    "failed": "Couldn't read the logs"
+  },
+  "details": {
+    "loading": "Reading details…",
+    "overview": "Overview",
+    "description": "Description",
+    "profiles": "Profiles",
+    "created": "Created",
+    "lastUsed": "Last used",
+    "config": "Config",
+    "devices": "Devices",
+    "snapshots": "Snapshots",
+    "noSnapshots": "No snapshots.",
+    "expires": "expires {{at}}",
+    "hidden": "hidden",
+    "hiddenHint": "Hidden because it may hold a secret. It never leaves the Termix server.",
+    "failed": "Couldn't read the details"
   }
 }

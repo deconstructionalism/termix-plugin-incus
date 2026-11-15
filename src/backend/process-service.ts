@@ -1,6 +1,7 @@
 import type { PluginContext } from "@termix-ssh/plugin-sdk/backend";
 import { commandLine, incus } from "./commands.js";
 import type { InstanceRow } from "./instances.js";
+import { GUEST_PATH } from "./logs.js";
 import {
   cgroupName,
   containerProcesses,
@@ -24,8 +25,6 @@ export class ProcessError extends Error {
   }
 }
 
-const GUEST_PATH =
-  "PATH=/run/current-system/sw/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
 const FRESH_MS = 3_000;
 
 interface Slot {

@@ -43,6 +43,7 @@ describe("parseInstances", () => {
 
   it("lists pool disks even when the storage reports nothing", () => {
     expect(byName("termix").disks).toEqual([
+      { device: "cephvol", usage: null, total: null },
       { device: "data", usage: null, total: null },
       { device: "root", usage: null, total: null },
     ]);
