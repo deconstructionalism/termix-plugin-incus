@@ -10,8 +10,26 @@
     "GET /plugin-api/incus/hosts/:hostId/version": {
       "access": "user",
       "permission": "incus.read",
-      "resource": { "kind": "host", "min": "connect" },
-      "params": { "hostId": "host" },
+      "resource": {
+        "kind": "host",
+        "min": "connect"
+      },
+      "params": {
+        "hostId": "host"
+      },
+      "allowed": "any",
+      "note": "Needs a real host running Incus to answer; refusals are still checked"
+    },
+    "GET /plugin-api/incus/hosts/:hostId/instances": {
+      "access": "user",
+      "permission": "incus.read",
+      "resource": {
+        "kind": "host",
+        "min": "connect"
+      },
+      "params": {
+        "hostId": "host"
+      },
       "allowed": "any",
       "note": "Needs a real host running Incus to answer; refusals are still checked"
     }

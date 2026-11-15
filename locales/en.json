@@ -7,8 +7,7 @@
     "title": "Incus",
     "noHost": "Open Incus from a host that has it turned on.",
     "loading": "Asking the host's Incus…",
-    "version": "Incus {{server}} answers on this host.",
-    "unreachable": "Incus didn't answer on this host: {{error}}",
+    "unreachable": "Incus didn't answer on this host",
     "error": "Couldn't reach the Incus plugin's server side."
   },
   "permissions": {
@@ -69,5 +68,22 @@
         "description": "How often the list refreshes while someone is looking at it."
       }
     }
+  },
+  "list": {
+    "name": "Name",
+    "state": "State",
+    "address": "Address",
+    "cpu": "CPU",
+    "memory": "Memory",
+    "disk": "Disk",
+    "processes": "Processes",
+    "search": "Search instances",
+    "refresh": "Refresh",
+    "empty": "No instances on this host.",
+    "noMatch": "No instances match.",
+    "noAgent": "no agent",
+    "notReported": "not reported",
+    "vm": "VM",
+    "container": "Container"
   }
 }

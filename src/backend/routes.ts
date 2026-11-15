@@ -2,6 +2,7 @@ import type { Request, Response, Router } from "express";
 import type { PluginContext } from "@termix-ssh/plugin-sdk/backend";
 import { Refusal, requireHost } from "./access.js";
 import { incus } from "./commands.js";
+import { InstanceLists, ListError } from "./list.js";
 import { readHostSettings } from "./settings.js";
 
 async function answer(
@@ -21,6 +22,7 @@ async function answer(
 
 export function registerRoutes(router: Router, ctx: PluginContext): void {
   router.use(ctx.rbac.require("read") as never);
+  const lists = new InstanceLists(ctx);
 
   /**
    * @openapi
@@ -96,6 +98,56 @@ export function registerRoutes(router: Router, ctx: PluginContext): void {
       return { ok: true, ...parseVersion(result.stdout) };
     });
   });
+
+  /**
+   * @openapi
+   * /plugin-api/incus/hosts/{hostId}/instances:
+   *   get:
+   *     summary: A host's Incus instances with their state and usage, secret values left out
+   *     tags:
+   *       - Incus
+   *     parameters:
+   *       - in: path
+   *         name: hostId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       200:
+   *         description: The instances, or why incus didn't answer
+   *       400:
+   *         description: Not a host id
+   *       403:
+   *         description: No permission, or Incus is off for the host
+   *       404:
+   *         description: No such host for this user
+   */
+  router.get(
+    "/hosts/:hostId/instances",
+    async (req: Request, res: Response) => {
+      await answer(res, async () => {
+        const { hostId, settings } = await requireHost(
+          ctx,
+          req.params.hostId,
+          "read",
+        );
+        try {
+          const instances = await lists.get(hostId, settings);
+          return {
+            ok: true,
+            instances,
+            level: settings.level,
+            protected: settings.protected,
+            pollSeconds: settings.pollSeconds,
+          };
+        } catch (error) {
+          if (error instanceof ListError)
+            return { ok: false, error: error.message };
+          throw error;
+        }
+      });
+    },
+  );
 }
 
 export function parseVersion(text: string): {

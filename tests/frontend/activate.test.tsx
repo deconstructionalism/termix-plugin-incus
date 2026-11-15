@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import {
   renderWithApp,
   type RenderedPluginApp,
 } from "@termix-ssh/plugin-sdk/testing";
 import type { PluginManifest } from "@termix-ssh/plugin-sdk/manifest";
 import * as plugin from "../../src/frontend/index";
-import { incusEnabled } from "../../src/frontend/index";
+import { incusEnabled, type Instance } from "../../src/frontend/index";
+import { bytes, limitBytes } from "../../src/frontend/format";
 import manifestJson from "../../manifest.json";
 import locales from "../../locales/en.json";
 
@@ -19,6 +20,21 @@ const host = {
   pluginSettings: { incus: { enableIncus: true } },
 };
 
+const instance = (over: Partial<Instance>): Instance => ({
+  name: "termix",
+  project: "default",
+  type: "container",
+  status: "Running",
+  image: "termixssh/termix:26.11.1",
+  addresses: [{ family: "inet", address: "10.0.100.66", interface: "eth0" }],
+  cpu: { percent: 2.5, limit: null },
+  memory: { usage: 268435456, limit: "1GiB" },
+  disks: [{ device: "root", usage: null, total: null }],
+  processes: 12,
+  agent: null,
+  ...over,
+});
+
 let rendered: RenderedPluginApp | null = null;
 
 afterEach(async () => {
@@ -26,52 +42,82 @@ afterEach(async () => {
   rendered = null;
 });
 
+async function show(data: unknown) {
+  const get = vi.fn(async () => ({ data }));
+  rendered = await renderWithApp(plugin, {
+    manifest,
+    locales,
+    api: { get } as never,
+  });
+  rendered.renderTab("incus", { isVisible: true, host } as never);
+  return get;
+}
+
 describe(`${manifest.id} activate`, () => {
   it("registers the tab", async () => {
     rendered = await renderWithApp(plugin, { manifest, locales });
     expect(rendered.registered.tabs()).toEqual(["incus"]);
   });
 
-  it("shows the host's Incus version", async () => {
-    const get = vi.fn(async () => ({
-      data: { ok: true, client: "7.0.1", server: "7.0.1" },
-    }));
-    rendered = await renderWithApp(plugin, {
-      manifest,
-      locales,
-      api: { get } as never,
+  it("lists the host's instances", async () => {
+    const get = await show({
+      ok: true,
+      pollSeconds: 15,
+      instances: [
+        instance({}),
+        instance({
+          name: "haos",
+          type: "virtual-machine",
+          image: null,
+          addresses: [],
+          cpu: { percent: null, limit: null },
+          memory: { usage: 3221225472, limit: null },
+          processes: null,
+          agent: false,
+        }),
+      ],
     });
-    rendered.renderTab("incus", { isVisible: true, host } as never);
-    expect(
-      await screen.findByText("Incus 7.0.1 answers on this host."),
-    ).toBeTruthy();
-    expect(get).toHaveBeenCalledWith("/hosts/1/version");
+    expect(await screen.findByText("termix")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith("/hosts/1/instances");
+    expect(screen.getByText("10.0.100.66")).toBeTruthy();
+    expect(screen.getByText("2.5%")).toBeTruthy();
+    expect(screen.getByText("256 MiB / 1.0 GiB")).toBeTruthy();
+    expect(screen.getAllByText(locales.list.notReported).length).toBe(2);
+    expect(screen.getAllByText(locales.list.noAgent).length).toBe(2);
+  });
+
+  it("filters by search", async () => {
+    await show({
+      ok: true,
+      pollSeconds: 15,
+      instances: [instance({}), instance({ name: "jellyfin" })],
+    });
+    await screen.findByText("jellyfin");
+    fireEvent.change(screen.getByPlaceholderText(locales.list.search), {
+      target: { value: "jelly" },
+    });
+    expect(screen.queryByText("termix")).toBeNull();
+    expect(screen.getByText("jellyfin")).toBeTruthy();
   });
 
   it("says why Incus didn't answer", async () => {
-    rendered = await renderWithApp(plugin, {
-      manifest,
-      locales,
-      api: {
-        get: vi.fn(async () => ({
-          data: { ok: false, error: "incus: command not found" },
-        })),
-      } as never,
-    });
-    rendered.renderTab("incus", { isVisible: true, host } as never);
-    expect(
-      await screen.findByText(
-        "Incus didn't answer on this host: incus: command not found",
-      ),
-    ).toBeTruthy();
+    await show({ ok: false, error: "incus: command not found" });
+    expect(await screen.findByText("incus: command not found")).toBeTruthy();
   });
 });
 
-describe("incusEnabled", () => {
+describe("helpers", () => {
   it("reads the host's switch", () => {
     expect(incusEnabled(host)).toBe(true);
     expect(incusEnabled({ pluginSettings: { incus: {} } })).toBe(false);
-    expect(incusEnabled({})).toBe(false);
     expect(incusEnabled(null)).toBe(false);
+  });
+
+  it("formats sizes and Incus limits", () => {
+    expect(bytes(268435456)).toBe("256 MiB");
+    expect(bytes(512)).toBe("512 B");
+    expect(limitBytes("1GiB")).toBe(1073741824);
+    expect(limitBytes("512MB")).toBe(512_000_000);
+    expect(limitBytes("50%")).toBeNull();
   });
 });

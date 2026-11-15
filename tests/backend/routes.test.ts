@@ -11,6 +11,7 @@ import type { PluginHostSummary } from "@termix-ssh/plugin-sdk/backend";
 import manifestJson from "../../manifest.json";
 import { activate } from "../../src/backend/index.js";
 import { parseVersion } from "../../src/backend/routes.js";
+import { listJson, SECRET } from "./fixtures/list.js";
 
 const manifest = manifestJson as unknown as PluginManifest;
 
@@ -151,6 +152,43 @@ describe("GET /hosts/:hostId/version", () => {
   it("refuses something that isn't a host id", async () => {
     const get = await start({});
     expect((await get("/hosts/1;id/version")).status).toBe(400);
+  });
+});
+
+describe("GET /hosts/:hostId/instances", () => {
+  it("lists instances without a single secret value", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true, protected: "termix" } },
+      answer: { stdout: listJson },
+    });
+    const { status, body } = await get("/hosts/1/instances");
+    expect(status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.instances).toHaveLength(4);
+    expect(body.protected).toEqual(["termix"]);
+    expect(JSON.stringify(body)).not.toContain(SECRET);
+    expect(commands).toEqual(["incus list --all-projects --format json"]);
+  });
+
+  it("says why incus didn't answer", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      answer: { stderr: "Error: permission denied", code: 1 },
+    });
+    const { body } = await get("/hosts/1/instances");
+    expect(body).toEqual({ ok: false, error: "Error: permission denied" });
+  });
+
+  it("refuses without the read permission or with Incus off", async () => {
+    let get = await start({
+      permissions: [],
+      hostSettings: { 1: { enableIncus: true } },
+    });
+    expect((await get("/hosts/1/instances")).status).toBe(403);
+    await new Promise<void>((resolve) => server!.close(() => resolve()));
+    get = await start({});
+    expect((await get("/hosts/1/instances")).status).toBe(403);
+    expect(commands).toEqual([]);
   });
 });
 

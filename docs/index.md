@@ -1,6 +1,6 @@
 The Incus plugin shows the [Incus](https://linuxcontainers.org/incus/) containers and VMs on your hosts, under each host, over the SSH login Termix already has for it.
 
-This is an early version: it checks that a host's Incus answers. The instance list, usage, processes, logs, shells and actions come next.
+This is an early version: it lists a host's instances with their usage. Processes, logs, shells and actions come next.
 
 ## Turn it on
 
@@ -8,6 +8,14 @@ This is an early version: it checks that a host's Incus answers. The instance li
 2. Make sure the host's SSH user can run `incus` without a password: in the `incus-admin` group, or with a passwordless `sudo` rule for `incus`.
 3. In the host's editor, under SSH, open Incus, turn it on and choose how to run `incus`. Only admins can change these settings.
 4. Open Incus from the host's menu.
+
+## The list
+
+Every instance in every project, with its state, address, CPU, memory, disk and process count. It refreshes while the tab is open, as often as the host's setting says (15 seconds unless changed), and one request serves everyone looking at the same host.
+
+- **CPU** shows from the second refresh: Incus reports a running total, so a percentage takes two readings.
+- **Disk** is reported only by some storage drivers. ZFS, Btrfs and LVM report it; the `dir` driver only with project quotas on its filesystem. Otherwise it says "not reported".
+- **VMs** report memory without the Incus agent, but not CPU, addresses or processes: those say "no agent".
 
 ## What's allowed
 
