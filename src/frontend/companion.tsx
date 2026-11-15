@@ -61,37 +61,39 @@ export function createCompanion(app: TermixApp) {
     }
     const instances = (answer as Extract<ListAnswer, { ok: true }>).instances;
     return (
-      <div className="flex flex-col text-xs">
-        {instances.length === 0 ? (
-          <EmptyState icon={Boxes} title={t("companion.empty")} />
-        ) : (
-          instances.map((i) => (
-            <div
-              key={`${i.project}/${i.name}`}
-              className="flex items-center gap-2 border-b border-border px-3 py-1.5"
-            >
-              <StatusDot tone={statusTone(i.status.toLowerCase())} />
-              <span className="min-w-0 flex-1 truncate font-medium">
-                {i.name}
-              </span>
-              <span className="text-muted-foreground">
-                {i.cpu.percent !== null ? `${i.cpu.percent}%` : ""}
-              </span>
-              <span className="w-16 text-right text-muted-foreground">
-                {bytes(i.memory.usage)}
-              </span>
-            </div>
-          ))
-        )}
+      <div className="flex h-full min-h-0 flex-col text-xs">
         {host ? (
           <button
             type="button"
-            className="px-3 py-2 text-left text-accent-brand"
+            className="shrink-0 border-b border-border px-3 py-2 text-left text-accent-brand"
             onClick={() => app.tabs.openTab(host as never, "incus")}
           >
             {t("companion.open")}
           </button>
         ) : null}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {instances.length === 0 ? (
+            <EmptyState icon={Boxes} title={t("companion.empty")} />
+          ) : (
+            instances.map((i) => (
+              <div
+                key={`${i.project}/${i.name}`}
+                className="flex items-center gap-2 border-b border-border px-3 py-1.5"
+              >
+                <StatusDot tone={statusTone(i.status.toLowerCase())} />
+                <span className="min-w-0 flex-1 truncate font-medium">
+                  {i.name}
+                </span>
+                <span className="text-muted-foreground">
+                  {i.cpu.percent !== null ? `${i.cpu.percent}%` : ""}
+                </span>
+                <span className="w-16 text-right text-muted-foreground">
+                  {bytes(i.memory.usage)}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     );
   };
