@@ -192,6 +192,10 @@ export function registerRoutes(
             instances,
             level: settings.level,
             protected: settings.protected,
+            manage:
+              levelAllows(settings.level, "manage") &&
+              (await hasLevel((p) => ctx.rbac.has(p), "manage")) &&
+              (await ctx.hosts.checkAccess(hostId, "edit")).hasAccess,
             operate:
               levelAllows(settings.level, "operate") &&
               (await hasLevel((p) => ctx.rbac.has(p), "operate")) &&

@@ -123,6 +123,110 @@
       "permission": "incus.read",
       "filtered": true,
       "note": "Counts only for hosts the caller can see that have Incus turned on"
+    },
+    "GET /plugin-api/incus/hosts/:hostId/profiles": {
+      "access": "user",
+      "permission": "incus.manage",
+      "resource": {
+        "kind": "host",
+        "min": "edit"
+      },
+      "allowed": "any",
+      "note": "Needs a real host running Incus at the manage level; refusals are still checked",
+      "params": {
+        "hostId": "host"
+      }
+    },
+    "POST /plugin-api/incus/hosts/:hostId/instances": {
+      "access": "user",
+      "permission": "incus.manage",
+      "resource": {
+        "kind": "host",
+        "min": "edit"
+      },
+      "allowed": "any",
+      "note": "Needs a real host running Incus at the manage level; refusals are still checked",
+      "params": {
+        "hostId": "host"
+      },
+      "body": {
+        "name": "authz-new",
+        "image": "images:alpine/3.21"
+      },
+      "destructive": true
+    },
+    "GET /plugin-api/incus/hosts/:hostId/instances/:project/:name/config": {
+      "access": "user",
+      "permission": "incus.manage",
+      "resource": {
+        "kind": "host",
+        "min": "edit"
+      },
+      "allowed": "any",
+      "note": "Needs a real host running Incus at the manage level; refusals are still checked",
+      "params": {
+        "hostId": "host",
+        "project": "default",
+        "name": "authz-instance"
+      }
+    },
+    "PUT /plugin-api/incus/hosts/:hostId/instances/:project/:name/config": {
+      "access": "user",
+      "permission": "incus.manage",
+      "resource": {
+        "kind": "host",
+        "min": "edit"
+      },
+      "allowed": "any",
+      "note": "Needs a real host running Incus at the manage level; refusals are still checked",
+      "params": {
+        "hostId": "host",
+        "project": "default",
+        "name": "authz-instance"
+      },
+      "body": {
+        "yaml": "config: {}\n",
+        "version": "x"
+      },
+      "destructive": true
+    },
+    "POST /plugin-api/incus/hosts/:hostId/instances/:project/:name/reveal": {
+      "access": "user",
+      "permission": "incus.manage",
+      "resource": {
+        "kind": "host",
+        "min": "edit"
+      },
+      "allowed": "any",
+      "note": "Needs a real host running Incus at the manage level; refusals are still checked",
+      "params": {
+        "hostId": "host",
+        "project": "default",
+        "name": "authz-instance"
+      },
+      "body": {
+        "key": "environment.X"
+      }
+    },
+    "POST /plugin-api/incus/hosts/:hostId/instances/:project/:name/manage/:verb": {
+      "access": "user",
+      "permission": "incus.manage",
+      "resource": {
+        "kind": "host",
+        "min": "edit"
+      },
+      "allowed": "any",
+      "note": "Needs a real host running Incus at the manage level; refusals are still checked",
+      "params": {
+        "hostId": "host",
+        "project": "default",
+        "name": "authz-instance",
+        "verb": "copy"
+      },
+      "body": {
+        "newName": "authz-copy"
+      },
+      "destructive": true
     }
   }
 }

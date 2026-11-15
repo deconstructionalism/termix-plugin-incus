@@ -452,6 +452,194 @@ describe("frozen instances", () => {
   });
 });
 
+describe("manage routes", () => {
+  const manageHost = {
+    enableIncus: true,
+    level: "manage",
+    protected: "termix",
+  };
+  const respond = (c: string) =>
+    c.startsWith("incus list")
+      ? { stdout: listJson }
+      : c.startsWith("incus config show")
+        ? {
+            stdout:
+              'config:\n  environment.KEY: s3cret\n  limits.cpu: "2"\ndevices: {}\n',
+          }
+        : { stdout: "" };
+  const send = async (
+    get: Awaited<ReturnType<typeof start>>,
+    path: string,
+    method: string,
+    body: unknown,
+  ) => {
+    void get;
+    const response = await fetch(
+      `http://127.0.0.1:${(server!.address() as { port: number }).port}${path}`,
+      {
+        method,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    return { status: response.status, body: await response.json() };
+  };
+
+  it("refuses everything on an operate host", async () => {
+    const get = await start({
+      permissions: ["incus.manage"],
+      hostSettings: { 1: { enableIncus: true, level: "operate" } },
+      respond,
+    });
+    expect((await get("/hosts/1/instances/default/studio/config")).status).toBe(
+      403,
+    );
+  });
+
+  it("refuses without the manage permission", async () => {
+    const get = await start({
+      permissions: ["incus.operate"],
+      hostSettings: { 1: manageHost },
+      respond,
+    });
+    expect((await get("/hosts/1/instances/default/studio/config")).status).toBe(
+      403,
+    );
+  });
+
+  it("shows the config with secrets hidden", async () => {
+    const get = await start({
+      permissions: ["incus.manage"],
+      hostSettings: { 1: manageHost },
+      respond,
+    });
+    const { body } = await get("/hosts/1/instances/default/studio/config");
+    expect(body.ok).toBe(true);
+    expect(body.yaml).not.toContain("s3cret");
+    expect(body.allowReveal).toBe(false);
+  });
+
+  it("won't edit, rename or delete a protected instance, and won't reveal unless allowed", async () => {
+    const get = await start({
+      permissions: ["incus.manage"],
+      hostSettings: { 1: manageHost },
+      respond,
+    });
+    const config = await get("/hosts/1/instances/default/termix/config");
+    expect(
+      (
+        await send(get, "/hosts/1/instances/default/termix/config", "PUT", {
+          yaml: config.body.yaml,
+          version: config.body.version,
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await send(
+          get,
+          "/hosts/1/instances/default/termix/manage/delete",
+          "POST",
+          { confirm: "termix" },
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await send(
+          get,
+          "/hosts/1/instances/default/termix/manage/rename",
+          "POST",
+          { newName: "t2" },
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await send(get, "/hosts/1/instances/default/studio/reveal", "POST", {
+          key: "environment.KEY",
+        })
+      ).status,
+    ).toBe(403);
+  });
+
+  it("asks for the name and a stopped instance before deleting", async () => {
+    const get = await start({
+      permissions: ["incus.manage"],
+      hostSettings: { 1: manageHost },
+      respond,
+    });
+    expect(
+      (
+        await send(
+          get,
+          "/hosts/1/instances/lab/old-app/manage/delete",
+          "POST",
+          { confirm: "nope" },
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await send(
+          get,
+          "/hosts/1/instances/default/studio/manage/delete",
+          "POST",
+          { confirm: "studio" },
+        )
+      ).status,
+    ).toBe(400);
+    const ok = await send(
+      get,
+      "/hosts/1/instances/lab/old-app/manage/delete",
+      "POST",
+      { confirm: "old-app" },
+    );
+    expect(ok.body).toMatchObject({ ok: true });
+    expect(commands).toContain("incus delete --project lab -- old-app");
+  });
+
+  it("creates from checked names, refusing a taken one", async () => {
+    const get = await start({
+      permissions: ["incus.manage"],
+      hostSettings: { 1: manageHost },
+      respond,
+    });
+    expect(
+      (
+        await send(get, "/hosts/1/instances", "POST", {
+          name: "studio",
+          image: "images:alpine/3.21",
+        })
+      ).status,
+    ).toBe(400);
+    const ok = await send(get, "/hosts/1/instances", "POST", {
+      name: "web",
+      image: "images:alpine/3.21",
+      profiles: ["default"],
+    });
+    expect(ok.body).toMatchObject({ ok: true });
+    expect(commands).toContain(
+      "incus launch --project default --profile default -- images:alpine/3.21 web",
+    );
+  });
+
+  it("reveals one value where the host allows it", async () => {
+    const get = await start({
+      permissions: ["incus.manage"],
+      hostSettings: { 1: { ...manageHost, allowReveal: true } },
+      respond,
+    });
+    const { body } = await send(
+      get,
+      "/hosts/1/instances/default/studio/reveal",
+      "POST",
+      { key: "environment.KEY" },
+    );
+    expect(body).toEqual({ ok: true, value: "s3cret" });
+  });
+});
+
 describe("parseVersion", () => {
   it("reads both lines, or neither", () => {
     expect(parseVersion(VERSION)).toEqual({ client: "7.0.1", server: "7.0.1" });
