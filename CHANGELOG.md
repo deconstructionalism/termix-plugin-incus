@@ -2,6 +2,15 @@
 
 ## 0.2.0
 
+### Added
+
+- Manage, on hosts at Read, operate and manage for people with the Manage permission:
+  - A config editor for an instance's own config: secret looking values show as `<hidden>` and keep their real value if left alone, changes are reviewed as a diff before applying, and a change made meanwhile by someone else is never overwritten.
+  - Revealing one hidden value at a time from Details, on hosts that allow it, each recorded in the audit log.
+  - New instance: a name, an image, profiles from the host, container or VM, and whether to start it.
+  - Clone (snapshots optional, with a warning when the instance has a fixed address), Rename and Delete. Rename and Delete need the instance stopped, and Delete needs its name typed.
+  - Protected instances can't have their config changed, or be renamed or deleted.
+
 ### Changed
 
 - The dashboard card refreshes every 15 seconds, and at once when you come back to the page, instead of once a minute.

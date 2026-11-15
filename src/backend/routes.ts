@@ -192,6 +192,10 @@ export function registerRoutes(
             instances,
             level: settings.level,
             protected: settings.protected,
+            reveal:
+              settings.allowReveal &&
+              levelAllows(settings.level, "manage") &&
+              (await hasLevel((p) => ctx.rbac.has(p), "manage")),
             manage:
               levelAllows(settings.level, "manage") &&
               (await hasLevel((p) => ctx.rbac.has(p), "manage")) &&

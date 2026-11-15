@@ -16,10 +16,12 @@ import {
   RefreshButton,
   StatusBadge,
   statusTone,
+  Button,
 } from "@termix-ssh/plugin-sdk/ui";
 import { Boxes } from "lucide-react";
 import { bytes, limitBytes, percentOf } from "./format";
 import { InstanceView } from "./instance-view";
+import { CreateView } from "./create-view";
 import { createCompanion } from "./companion";
 import { createCard } from "./card";
 
@@ -48,6 +50,8 @@ export type ListAnswer =
       // what this user may do on this host, decided by the server
       shell: boolean;
       operate: boolean;
+      manage: boolean;
+      reveal: boolean;
     }
   | { ok: false; error: string };
 
@@ -77,6 +81,7 @@ function createTab(app: TermixApp) {
     const [failed, setFailed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [query, setQuery] = useState("");
+    const [creating, setCreating] = useState(false);
     const [open, setOpen] = useState<{ project: string; name: string } | null>(
       null,
     );
@@ -182,11 +187,22 @@ function createTab(app: TermixApp) {
       <PanelShell
         title={host.name}
         actions={
-          <RefreshButton
-            onClick={() => void load()}
-            loading={loading}
-            label={t("list.refresh")}
-          />
+          <div className="flex items-center gap-2">
+            {answer && "manage" in answer && answer.manage ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCreating(true)}
+              >
+                {t("manage.create.button")}
+              </Button>
+            ) : null}
+            <RefreshButton
+              onClick={() => void load()}
+              loading={loading}
+              label={t("list.refresh")}
+            />
+          </div>
         }
         toolbar={
           <PanelSearch
@@ -198,6 +214,14 @@ function createTab(app: TermixApp) {
         }
       >
         {body}
+        {creating && hostId ? (
+          <CreateView
+            app={app}
+            hostId={hostId}
+            onDone={() => void load()}
+            onClose={() => setCreating(false)}
+          />
+        ) : null}
         {open && hostId ? (
           <InstanceView
             app={app}
@@ -212,6 +236,8 @@ function createTab(app: TermixApp) {
                 : undefined) ?? ""
             }
             canOperate={!!answer && "operate" in answer && answer.operate}
+            canManage={!!answer && "manage" in answer && answer.manage}
+            canReveal={!!answer && "reveal" in answer && answer.reveal}
             isProtected={
               !!answer &&
               "protected" in answer &&

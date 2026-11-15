@@ -624,6 +624,27 @@ describe("manage routes", () => {
     );
   });
 
+  it("clones without snapshots unless asked", async () => {
+    const get = await start({
+      permissions: ["incus.manage"],
+      hostSettings: { 1: manageHost },
+      respond,
+    });
+    await send(get, "/hosts/1/instances/default/studio/manage/copy", "POST", {
+      newName: "studio2",
+    });
+    expect(commands).toContain(
+      "incus copy --project default --instance-only -- studio studio2",
+    );
+    await send(get, "/hosts/1/instances/default/studio/manage/copy", "POST", {
+      newName: "studio3",
+      snapshots: true,
+    });
+    expect(commands).toContain(
+      "incus copy --project default -- studio studio3",
+    );
+  });
+
   it("reveals one value where the host allows it", async () => {
     const get = await start({
       permissions: ["incus.manage"],

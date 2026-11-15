@@ -1,6 +1,6 @@
 The Incus plugin shows the [Incus](https://linuxcontainers.org/incus/) containers and VMs on your hosts, under each host, over the SSH login Termix already has for it.
 
-This is an early version: it lists a host's instances with their usage, and shows each one's processes, logs, details and a shell, and can start, stop, restart, freeze and snapshot them. Creating and editing instances comes next.
+This is an early version: it lists a host's instances with their usage, and shows each one's processes, logs, details and a shell, and can start, stop, restart, freeze, snapshot, create, clone, rename, delete and reconfigure them.
 
 ## Turn it on
 
@@ -67,6 +67,19 @@ On hosts set to **Read and operate** or above, for people with the Operate permi
 Everything but Start and Unfreeze asks first. Protected instances only offer Start and Unfreeze, and the server refuses the rest. Each action goes in Termix's audit log.
 
 Stopping isn't always lasting: an instance set to start at boot starts again then. And on Incus's `dir` storage driver, a snapshot is a full copy of the instance.
+
+## Manage
+
+On hosts set to **Read, operate and manage**, for people with the Manage permission and edit access to the host:
+
+- **New instance**, beside Refresh on the list: a name, an image (like `images:alpine/3.21`), profiles from the host, container or VM, and whether to start it.
+- An instance's **Manage** tab:
+  - **Config**: its own config as YAML, without what its profiles add. Secret looking values show as `<hidden>`; leave one as it is and it keeps its real value. Review the changes as a diff, then apply. If someone changed the config since you opened it, nothing is overwritten and you're asked to reload.
+  - **Clone**: a new, stopped instance with the same config, devices and files; its snapshots only if you tick the box. If the instance has a fixed address, the clone gets the same one, so change it before starting the clone.
+  - **Rename** and **Delete**: the instance must be stopped, and Delete needs its name typed.
+- **Reveal** on a hidden value in Details, on hosts with **Allow revealing hidden values** on. Each reveal is in Termix's audit log.
+
+Protected instances can be cloned, but their config can't be changed and they can't be renamed or deleted.
 
 ## Shells
 

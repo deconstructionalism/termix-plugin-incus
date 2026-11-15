@@ -387,8 +387,16 @@ export function registerManageRoutes(
             words = ["rename", "--project", project, "--", name, newName];
             summary = `Renamed ${name} to ${newName}`;
           } else {
-            words = ["copy", "--project", project, "--", name, newName];
-            summary = `Copied ${name} to ${newName}`;
+            words = [
+              "copy",
+              "--project",
+              project,
+              ...(req.body?.snapshots === true ? [] : ["--instance-only"]),
+              "--",
+              name,
+              newName,
+            ];
+            summary = `Cloned ${name} as ${newName}`;
           }
         }
         try {

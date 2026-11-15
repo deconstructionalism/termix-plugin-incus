@@ -114,7 +114,8 @@
     "processes": "Processes",
     "logs": "Logs",
     "details": "Details",
-    "shell": "Shell"
+    "shell": "Shell",
+    "manage": "Manage"
   },
   "logs": {
     "loading": "Reading logs…",
@@ -254,5 +255,51 @@
       "frozen": "Frozen",
       "error": "Error"
     }
+  },
+  "manage": {
+    "protected": "This instance is protected on this host: its config can be read here but not changed, and it can't be renamed or deleted.",
+    "newName": "New name",
+    "stopFirst": "Stop the instance first.",
+    "config": {
+      "title": "Config",
+      "loading": "Reading the config…",
+      "hint": "The instance's own config, without what its profiles add. Values shown as <hidden> keep their real value if you leave them as they are.",
+      "review": "Review changes",
+      "apply": "Apply",
+      "back": "Back to editing",
+      "reload": "Reload"
+    },
+    "copy": {
+      "title": "Clone",
+      "label": "Clone",
+      "name": "Name of the clone",
+      "hint": "Makes a new, stopped instance with this one's config, devices and files.",
+      "snapshots": "Include its snapshots (on dir storage each one is a full copy)",
+      "fixedAddress": "This instance has a fixed address (ipv4.address or ipv6.address). The clone gets the same one, so change it in the clone's config before starting it."
+    },
+    "rename": {
+      "title": "Rename",
+      "label": "Rename"
+    },
+    "delete": {
+      "title": "Delete",
+      "label": "Delete",
+      "typeName": "Type {{name}} to delete it, with its snapshots.",
+      "confirm": "Delete {{name}}?",
+      "description": "The instance and its snapshots are removed. This can't be undone."
+    },
+    "create": {
+      "button": "New instance",
+      "title": "New instance",
+      "name": "Name",
+      "image": "Image",
+      "imageHint": "Like images:alpine/3.21 or images:debian/12",
+      "profiles": "Profiles",
+      "vm": "Virtual machine",
+      "start": "Start it",
+      "create": "Create"
+    },
+    "reveal": "Reveal",
+    "revealing": "Revealing…"
   }
 }

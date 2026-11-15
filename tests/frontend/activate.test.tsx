@@ -7,7 +7,7 @@ import {
 import type { PluginManifest } from "@termix-ssh/plugin-sdk/manifest";
 import * as plugin from "../../src/frontend/index";
 import { incusEnabled, type Instance } from "../../src/frontend/index";
-import { bytes, limitBytes } from "../../src/frontend/format";
+import { bytes, limitBytes, lineDiff } from "../../src/frontend/format";
 import manifestJson from "../../manifest.json";
 import locales from "../../locales/en.json";
 
@@ -199,5 +199,24 @@ describe("helpers", () => {
     expect(limitBytes("1GiB")).toBe(1073741824);
     expect(limitBytes("512MB")).toBe(512_000_000);
     expect(limitBytes("50%")).toBeNull();
+  });
+});
+
+describe("lineDiff", () => {
+  it("marks added, removed and unchanged lines", () => {
+    const diff = lineDiff("a: 1\nb: 2\nc: 3\n", "a: 1\nb: 5\nc: 3\nd: 4\n");
+    expect(diff.map((l) => `${l.kind[0]} ${l.text}`)).toEqual([
+      "s a: 1",
+      "r b: 2",
+      "a b: 5",
+      "s c: 3",
+      "a d: 4",
+    ]);
+  });
+
+  it("finds nothing changed in the same text", () => {
+    expect(lineDiff("x\ny\n", "x\ny\n").every((l) => l.kind === "same")).toBe(
+      true,
+    );
   });
 });

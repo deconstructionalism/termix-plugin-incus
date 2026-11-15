@@ -21,6 +21,7 @@ import { Activity, Lock } from "lucide-react";
 import { bytes, duration } from "./format";
 import { ShellPanel } from "./shell-panel";
 import { ActionBar, useInstanceAction, type ActionName } from "./actions";
+import { ManagePanel } from "./manage-panel";
 
 export interface Process {
   pid: number;
@@ -67,7 +68,7 @@ export interface Details {
 }
 export type DetailsAnswer = { ok: true; details: Details } | Failure;
 
-type Tab = "processes" | "logs" | "details" | "shell";
+type Tab = "processes" | "logs" | "details" | "shell" | "manage";
 type Sort = "cpu" | "memory";
 
 export function sortProcesses(list: Process[], sort: Sort): Process[] {
@@ -146,6 +147,8 @@ export function InstanceView({
   status,
   canShell,
   canOperate,
+  canManage,
+  canReveal,
   isProtected,
   onChanged,
   onClose,
@@ -157,6 +160,8 @@ export function InstanceView({
   status: string;
   canShell: boolean;
   canOperate: boolean;
+  canManage: boolean;
+  canReveal: boolean;
   isProtected: boolean;
   onChanged: () => void;
   onClose: () => void;
@@ -199,6 +204,9 @@ export function InstanceView({
             ...(canShell && status === "Running"
               ? [{ id: "shell", label: t("instance.shell") }]
               : []),
+            ...(canManage
+              ? [{ id: "manage", label: t("instance.manage") }]
+              : []),
           ]}
         />
       }
@@ -213,6 +221,17 @@ export function InstanceView({
         <Processes app={app} path={`${base}/processes`} />
       ) : null}
       {tab === "logs" ? <Logs app={app} path={`${base}/logs`} /> : null}
+      {tab === "manage" && canManage ? (
+        <ManagePanel
+          app={app}
+          base={base}
+          name={name}
+          status={status}
+          isProtected={isProtected}
+          onChanged={onChanged}
+          onGone={onClose}
+        />
+      ) : null}
       {tab === "shell" && canShell && status === "Running" ? (
         <ShellPanel app={app} hostId={hostId} project={project} name={name} />
       ) : null}
@@ -221,6 +240,7 @@ export function InstanceView({
           key={round}
           app={app}
           path={`${base}/details`}
+          reveal={canReveal ? `${base}/reveal` : null}
           snapshots={
             canOperate
               ? { busy: action.busy, isProtected, run: action.run }
@@ -400,8 +420,54 @@ function Logs({ app, path }: { app: TermixApp; path: string }) {
   );
 }
 
-function Value({ entry }: { entry: Entry }) {
+function Value({
+  entry,
+  revealAt,
+  app,
+  device,
+}: {
+  entry: Entry;
+  revealAt?: string | null;
+  app?: TermixApp;
+  device?: string;
+}) {
   const { t } = useTranslation();
+  const [shown, setShown] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (entry.value === null && shown !== null) {
+    return <span className="font-mono text-xs break-all">{shown}</span>;
+  }
+  if (entry.value === null && revealAt && app) {
+    return (
+      <span className="inline-flex items-center gap-2 text-muted-foreground">
+        <Lock className="h-3 w-3" />
+        {t("details.hidden")}
+        <Button
+          size="xs"
+          variant="ghost"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const { data } = await app.api.post<{
+                ok: boolean;
+                value?: string;
+              }>(revealAt, {
+                key: entry.key,
+                ...(device ? { device } : {}),
+              });
+              if (data.ok && typeof data.value === "string")
+                setShown(data.value);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? t("manage.revealing") : t("manage.reveal")}
+        </Button>
+      </span>
+    );
+  }
   if (entry.value === null) {
     return (
       <span
@@ -420,9 +486,11 @@ function DetailsPanel({
   app,
   path,
   snapshots,
+  reveal,
 }: {
   app: TermixApp;
   path: string;
+  reveal: string | null;
   snapshots: {
     busy: ActionName | null;
     isProtected: boolean;
@@ -489,7 +557,7 @@ function DetailsPanel({
             <DataTableRow key={e.key}>
               <td className="font-mono text-xs">{e.key}</td>
               <td>
-                <Value entry={e} />
+                <Value entry={e} revealAt={reveal} app={app} />
               </td>
             </DataTableRow>
           ))}
@@ -510,7 +578,12 @@ function DetailsPanel({
                     <span className="font-mono text-xs text-muted-foreground">
                       {o.key}:{" "}
                     </span>
-                    <Value entry={o} />
+                    <Value
+                      entry={o}
+                      revealAt={reveal}
+                      app={app}
+                      device={dev.name}
+                    />
                   </div>
                 ))}
               </td>
