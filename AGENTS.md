@@ -85,3 +85,6 @@ aren't obvious from the code, and anything that has bitten you before.
   without them anyone with edit access to a host could change its level or protected list.
 - Tests replace `ctx.ssh.exec` on the mock, since the SDK's mock answers every command with empty output.
 - Use Node 24 (`nix shell nixpkgs#nodejs_24`): on Node 22 the test runner's native module is missing.
+- `flake.nix` builds the plugin folder (what Termix loads from `$DATA_DIR/plugins/incus`) and runs the
+  tests. After any change to `package-lock.json`, update `npmDepsHash`: set it to `lib.fakeHash`, run
+  `nix build`, and copy the hash it prints.

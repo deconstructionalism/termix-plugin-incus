@@ -14,3 +14,6 @@ termix-plugin-signing.key
 .claude/
 .DS_Store
 Thumbs.db
+
+# Nix
+result
