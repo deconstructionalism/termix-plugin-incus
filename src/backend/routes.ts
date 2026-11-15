@@ -1,14 +1,16 @@
 import type { Request, Response, Router } from "express";
 import type { PluginContext } from "@termix-ssh/plugin-sdk/backend";
-import { Refusal, requireHost } from "./access.js";
+import { hasLevel, Refusal, requireHost } from "./access.js";
 import { incus } from "./commands.js";
 import { InstanceLists, ListError } from "./list.js";
+import { ACTIONS, performAction, type Action } from "./operations.js";
 import { Processes, ProcessError } from "./process-service.js";
 import type { InstanceRow } from "./instances.js";
 import { readLogs } from "./logs.js";
 import {
   INSTANCE_NAME,
   PROJECT_NAME,
+  levelAllows,
   readHostSettings,
   type IncusHostSettings,
 } from "./settings.js";
@@ -33,7 +35,10 @@ export function registerRoutes(
   ctx: PluginContext,
   lists: InstanceLists,
 ): void {
-  router.use(ctx.rbac.require("read") as never);
+  router.use(async (_req, res, next) => {
+    if (await hasLevel((p) => ctx.rbac.has(p), "read")) return next();
+    res.status(403).json({ error: "You don't have permission for this" });
+  });
   const processes = new Processes(ctx);
 
   // checks, then finds the instance in the host's current list
@@ -182,6 +187,10 @@ export function registerRoutes(
             instances,
             level: settings.level,
             protected: settings.protected,
+            operate:
+              levelAllows(settings.level, "operate") &&
+              (await hasLevel((p) => ctx.rbac.has(p), "operate")) &&
+              (await ctx.hosts.checkAccess(hostId, "edit")).hasAccess,
             shell:
               settings.allowShell &&
               (await ctx.rbac.has("shell")) &&
@@ -345,6 +354,111 @@ export function registerRoutes(
         );
         if (!details) throw new Refusal(404, "Instance not found");
         return { ok: true, details };
+      });
+    },
+  );
+
+  /**
+   * @openapi
+   * /plugin-api/incus/hosts/{hostId}/instances/{project}/{name}/actions/{action}:
+   *   post:
+   *     summary: Start, stop, restart, freeze, unfreeze or snapshot an instance, through Termix operations
+   *     tags:
+   *       - Incus
+   *     parameters:
+   *       - in: path
+   *         name: hostId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - in: path
+   *         name: project
+   *         required: true
+   *         schema:
+   *           type: string
+   *       - in: path
+   *         name: name
+   *         required: true
+   *         schema:
+   *           type: string
+   *       - in: path
+   *         name: action
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               input:
+   *                 type: object
+   *     responses:
+   *       200:
+   *         description: How the run went
+   *       400:
+   *         description: Not an action, host id or instance name
+   *       403:
+   *         description: No permission, or Incus is off for the host
+   *       404:
+   *         description: No such host or instance
+   */
+  router.post(
+    "/hosts/:hostId/instances/:project/:name/actions/:action",
+    async (req: Request, res: Response) => {
+      await answer(res, async () => {
+        const action = String(req.params.action) as Action;
+        if (!ACTIONS.includes(action)) throw new Refusal(400, "Not an action");
+        const found = await findInstance(req);
+        if ("ok" in found) return found;
+        const input =
+          req.body?.input && typeof req.body.input === "object"
+            ? (req.body.input as Record<string, unknown>)
+            : {};
+        // Termix's operation runner can't hand a plugin process its abort
+        // signal yet, so the button runs the action here, with the person's
+        // checks the runner would have made.
+        if (!(await hasLevel((p) => ctx.rbac.has(p), "operate"))) {
+          throw new Refusal(
+            403,
+            "You don't have permission to operate instances",
+          );
+        }
+        if (!(await ctx.hosts.checkAccess(found.hostId, "edit")).hasAccess) {
+          throw new Refusal(403, "Operating needs edit access to the host");
+        }
+        const resourceKey = `${found.instance.project}/${found.instance.name}`;
+        try {
+          const summary = await performAction(
+            ctx,
+            lists,
+            action,
+            { hostId: found.hostId, resourceKey },
+            input,
+          );
+          await ctx.audit.record({
+            action: `incus.${action}`,
+            resourceType: "incus-instance",
+            resourceId: resourceKey,
+            resourceName: found.instance.name,
+            details: JSON.stringify({ hostId: found.hostId, input }),
+            success: true,
+          });
+          return { ok: true, summary };
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          await ctx.audit.record({
+            action: `incus.${action}`,
+            resourceType: "incus-instance",
+            resourceId: resourceKey,
+            resourceName: found.instance.name,
+            success: false,
+            errorMessage: message,
+          });
+          return { ok: false, error: message };
+        }
       });
     },
   );

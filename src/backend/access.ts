@@ -16,11 +16,22 @@ export class Refusal extends Error {
   }
 }
 
-const LEVEL_PERMISSION: Record<Level, string> = {
-  read: "read",
-  operate: "operate",
-  manage: "manage",
+// a ladder: each permission includes the ones below it
+const GRANTS: Record<Level, string[]> = {
+  read: ["read", "operate", "manage"],
+  operate: ["operate", "manage"],
+  manage: ["manage"],
 };
+
+export async function hasLevel(
+  has: (permission: string) => Promise<boolean>,
+  level: Level,
+): Promise<boolean> {
+  for (const permission of GRANTS[level]) {
+    if (await has(permission)) return true;
+  }
+  return false;
+}
 
 export interface AllowedHost {
   hostId: number;
@@ -42,7 +53,7 @@ export async function requireHost(
   needed: Level,
 ): Promise<AllowedHost> {
   const hostId = parseHostId(rawHostId);
-  if (!(await ctx.rbac.has(LEVEL_PERMISSION[needed]))) {
+  if (!(await hasLevel((p) => ctx.rbac.has(p), needed))) {
     throw new Refusal(403, "You don't have permission for this");
   }
   const access = await ctx.hosts.checkAccess(

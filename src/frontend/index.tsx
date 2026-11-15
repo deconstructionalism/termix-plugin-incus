@@ -43,8 +43,9 @@ export type ListAnswer =
       instances: Instance[];
       pollSeconds: number;
       protected: string[];
-      // whether this user may open shells on this host, decided by the server
+      // what this user may do on this host, decided by the server
       shell: boolean;
+      operate: boolean;
     }
   | { ok: false; error: string };
 
@@ -201,6 +202,20 @@ function createTab(app: TermixApp) {
             hostId={hostId}
             project={open.project}
             name={open.name}
+            status={
+              (answer && "instances" in answer
+                ? answer.instances.find(
+                    (i) => i.project === open.project && i.name === open.name,
+                  )?.status
+                : undefined) ?? ""
+            }
+            canOperate={!!answer && "operate" in answer && answer.operate}
+            isProtected={
+              !!answer &&
+              "protected" in answer &&
+              answer.protected.includes(open.name)
+            }
+            onChanged={() => void load()}
             canShell={
               !!answer &&
               "shell" in answer &&

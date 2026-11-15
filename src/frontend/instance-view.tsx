@@ -14,10 +14,13 @@ import {
   RefreshButton,
   Segmented,
   TabStrip,
+  Button,
+  useConfirm,
 } from "@termix-ssh/plugin-sdk/ui";
 import { Activity, Lock } from "lucide-react";
 import { bytes, duration } from "./format";
 import { ShellPanel } from "./shell-panel";
+import { ActionBar, useInstanceAction, type ActionName } from "./actions";
 
 export interface Process {
   pid: number;
@@ -32,7 +35,8 @@ export interface Process {
 
 type Failure = { ok: false; reason: string; error: string; path?: string };
 export type ProcessAnswer =
-  { ok: true; processes: Process[]; truncated: boolean } | Failure;
+  | { ok: true; processes: Process[]; truncated: boolean; frozen?: boolean }
+  | Failure;
 export type LogAnswer =
   | {
       ok: true;
@@ -139,19 +143,32 @@ export function InstanceView({
   hostId,
   project,
   name,
+  status,
   canShell,
+  canOperate,
+  isProtected,
+  onChanged,
   onClose,
 }: {
   app: TermixApp;
   hostId: string;
   project: string;
   name: string;
+  status: string;
   canShell: boolean;
+  canOperate: boolean;
+  isProtected: boolean;
+  onChanged: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("processes");
   const base = `/hosts/${encodeURIComponent(hostId)}/instances/${encodeURIComponent(project)}/${encodeURIComponent(name)}`;
+  const [round, setRound] = useState(0);
+  const action = useInstanceAction(app, base, () => {
+    setRound((n) => n + 1);
+    onChanged();
+  });
   return (
     <InlineView
       open
@@ -159,6 +176,17 @@ export function InstanceView({
         if (!open) onClose();
       }}
       title={name}
+      status={<span className="text-xs text-muted-foreground">{status}</span>}
+      actions={
+        canOperate ? (
+          <ActionBar
+            status={status}
+            isProtected={isProtected}
+            busy={action.busy}
+            run={(a) => void action.run(a)}
+          />
+        ) : null
+      }
       toolbar={
         <TabStrip
           variant="secondary"
@@ -168,20 +196,36 @@ export function InstanceView({
             { id: "processes", label: t("instance.processes") },
             { id: "logs", label: t("instance.logs") },
             { id: "details", label: t("instance.details") },
-            ...(canShell ? [{ id: "shell", label: t("instance.shell") }] : []),
+            ...(canShell && status === "Running"
+              ? [{ id: "shell", label: t("instance.shell") }]
+              : []),
           ]}
         />
       }
     >
+      {action.error ? (
+        <NoticePanel tone="destructive" title={t("actions.failed")}>
+          {action.error}
+        </NoticePanel>
+      ) : null}
       {tab === "processes" ? (
         <Processes app={app} path={`${base}/processes`} />
       ) : null}
       {tab === "logs" ? <Logs app={app} path={`${base}/logs`} /> : null}
-      {tab === "shell" && canShell ? (
+      {tab === "shell" && canShell && status === "Running" ? (
         <ShellPanel app={app} hostId={hostId} project={project} name={name} />
       ) : null}
       {tab === "details" ? (
-        <DetailsPanel app={app} path={`${base}/details`} />
+        <DetailsPanel
+          key={round}
+          app={app}
+          path={`${base}/details`}
+          snapshots={
+            canOperate
+              ? { busy: action.busy, isProtected, run: action.run }
+              : null
+          }
+        />
       ) : null}
     </InlineView>
   );
@@ -256,6 +300,9 @@ function Processes({ app, path }: { app: TermixApp; path: string }) {
           ).processes.reduce((sum, p) => sum + p.threads, 0),
         })}
       </p>
+      {(answer as Extract<ProcessAnswer, { ok: true }>).frozen ? (
+        <NoticePanel title={t("processes.paused")} />
+      ) : null}
       {(answer as Extract<ProcessAnswer, { ok: true }>).truncated ? (
         <NoticePanel tone="warning" title={t("processes.truncated")} />
       ) : null}
@@ -368,8 +415,30 @@ function Value({ entry }: { entry: Entry }) {
   return <span className="font-mono text-xs break-all">{entry.value}</span>;
 }
 
-function DetailsPanel({ app, path }: { app: TermixApp; path: string }) {
+function DetailsPanel({
+  app,
+  path,
+  snapshots,
+}: {
+  app: TermixApp;
+  path: string;
+  snapshots: {
+    busy: ActionName | null;
+    isProtected: boolean;
+    run: (action: ActionName, input?: Record<string, unknown>) => Promise<void>;
+  } | null;
+}) {
   const { t } = useTranslation();
+  const confirm = useConfirm();
+  const ask = async (action: ActionName, snapshot: string) => {
+    if (!snapshots) return;
+    const ok = await confirm({
+      title: t(`actions.${action}.confirm`),
+      description: t(`actions.${action}.description`),
+      confirmLabel: t(`actions.${action}.label`),
+    });
+    if (ok) await snapshots.run(action, { snapshot });
+  };
   const { answer, failed } = useInstanceApi<DetailsAnswer>(app, path, null);
   if (failed || (answer && "error" in answer)) {
     return (
@@ -449,6 +518,25 @@ function DetailsPanel({ app, path }: { app: TermixApp; path: string }) {
         </tbody>
       </DataTable>
       {section(t("details.snapshots"))}
+      {snapshots ? (
+        <div className="flex items-center gap-3 px-3 pb-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={snapshots.busy !== null}
+            onClick={() =>
+              void snapshots.run("snapshot-create", { expiry: "7d" })
+            }
+          >
+            {snapshots.busy === "snapshot-create"
+              ? t("actions.working")
+              : t("actions.snapshot-create.label")}
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {t("actions.snapshotHint")}
+          </span>
+        </div>
+      ) : null}
       {d.snapshots.length === 0 ? (
         <p className="px-3 text-sm text-muted-foreground">
           {t("details.noSnapshots")}
@@ -463,6 +551,26 @@ function DetailsPanel({ app, path }: { app: TermixApp; path: string }) {
                 <td>
                   {s.expiresAt ? t("details.expires", { at: s.expiresAt }) : ""}
                 </td>
+                {snapshots && !snapshots.isProtected ? (
+                  <td className="text-right">
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      disabled={snapshots.busy !== null}
+                      onClick={() => void ask("snapshot-restore", s.name)}
+                    >
+                      {t("actions.snapshot-restore.label")}
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      disabled={snapshots.busy !== null}
+                      onClick={() => void ask("snapshot-delete", s.name)}
+                    >
+                      {t("actions.snapshot-delete.label")}
+                    </Button>
+                  </td>
+                ) : null}
               </DataTableRow>
             ))}
           </tbody>

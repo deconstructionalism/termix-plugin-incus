@@ -15,7 +15,7 @@ export type LogAnswer =
   | { ok: true; source: LogSource; text: string; truncated: boolean }
   | {
       ok: false;
-      reason: "no-agent" | "no-source" | "unreadable" | "failed";
+      reason: "no-agent" | "no-source" | "unreadable" | "frozen" | "failed";
       error: string;
       path?: string;
     };
@@ -36,10 +36,16 @@ export async function readLogs(
       timeoutMs: 20_000,
       maxOutputBytes: 1024 * 1024,
     });
-  const running = instance.status === "Running";
+  const frozen = instance.status === "Frozen";
+  // a frozen instance can't answer incus exec, so only its log file is tried
+  const running = instance.status === "Running" || frozen;
+  if (frozen && instance.type === "virtual-machine") {
+    return { ok: false, reason: "frozen", error: "The VM is frozen" };
+  }
 
   if (
     running &&
+    !frozen &&
     !(instance.type === "virtual-machine" && instance.agent === false)
   ) {
     const journal = await run(
@@ -112,6 +118,9 @@ export async function readLogs(
       text: lastLines(console.stdout),
       truncated: console.truncated,
     };
+  }
+  if (frozen) {
+    return { ok: false, reason: "frozen", error: "The instance is frozen" };
   }
   const why = console.stderr + console.stdout;
   if (DENIED.test(why)) {

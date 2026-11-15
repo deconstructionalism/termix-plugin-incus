@@ -27,7 +27,8 @@
     "ssh:connect",
     "credentials:use",
     "network:serve",
-    "ui:surface"
+    "ui:surface",
+    "operations:provide"
   ],
   "sandbox": {
     "schedules": [],
@@ -86,9 +87,18 @@
             "default": "read",
             "permission": "admin.plugins.manage",
             "options": [
-              { "value": "read", "labelKey": "settings.host.level.read" },
-              { "value": "operate", "labelKey": "settings.host.level.operate" },
-              { "value": "manage", "labelKey": "settings.host.level.manage" }
+              {
+                "value": "read",
+                "labelKey": "settings.host.level.read"
+              },
+              {
+                "value": "operate",
+                "labelKey": "settings.host.level.operate"
+              },
+              {
+                "value": "manage",
+                "labelKey": "settings.host.level.manage"
+              }
             ]
           },
           {
@@ -141,7 +151,10 @@
                 "value": "incus",
                 "labelKey": "settings.host.incusCommand.plain"
               },
-              { "value": "sudo", "labelKey": "settings.host.incusCommand.sudo" }
+              {
+                "value": "sudo",
+                "labelKey": "settings.host.incusCommand.sudo"
+              }
             ]
           },
           {
@@ -157,6 +170,275 @@
           }
         ]
       }
+    },
+    "operations": {
+      "actions": [
+        {
+          "id": "incus.list-instances",
+          "titleKey": "operations.list-instances.title",
+          "scope": "host",
+          "risk": "read",
+          "permission": "read",
+          "hostAccess": "connect",
+          "when": {
+            "settings": {
+              "enableIncus": true
+            }
+          },
+          "surfaces": {
+            "palette": false
+          }
+        },
+        {
+          "id": "incus.start",
+          "titleKey": "operations.start.title",
+          "scope": "resource",
+          "resource": "incus.instance",
+          "risk": "change",
+          "permission": "operate",
+          "hostAccess": "edit",
+          "dryRun": "describe",
+          "when": {
+            "settings": {
+              "enableIncus": true
+            }
+          },
+          "surfaces": {
+            "assistant": false,
+            "mcp": false
+          },
+          "exclusive": true,
+          "idempotent": true,
+          "icon": "Play"
+        },
+        {
+          "id": "incus.stop",
+          "titleKey": "operations.stop.title",
+          "scope": "resource",
+          "resource": "incus.instance",
+          "risk": "change",
+          "permission": "operate",
+          "hostAccess": "edit",
+          "dryRun": "describe",
+          "when": {
+            "settings": {
+              "enableIncus": true
+            }
+          },
+          "surfaces": {
+            "assistant": false,
+            "mcp": false
+          },
+          "exclusive": true,
+          "idempotent": true,
+          "icon": "Square"
+        },
+        {
+          "id": "incus.restart",
+          "titleKey": "operations.restart.title",
+          "scope": "resource",
+          "resource": "incus.instance",
+          "risk": "change",
+          "permission": "operate",
+          "hostAccess": "edit",
+          "dryRun": "describe",
+          "when": {
+            "settings": {
+              "enableIncus": true
+            }
+          },
+          "surfaces": {
+            "assistant": false,
+            "mcp": false
+          },
+          "exclusive": true,
+          "icon": "RotateCw"
+        },
+        {
+          "id": "incus.freeze",
+          "titleKey": "operations.freeze.title",
+          "scope": "resource",
+          "resource": "incus.instance",
+          "risk": "change",
+          "permission": "operate",
+          "hostAccess": "edit",
+          "dryRun": "describe",
+          "when": {
+            "settings": {
+              "enableIncus": true
+            }
+          },
+          "surfaces": {
+            "assistant": false,
+            "mcp": false
+          },
+          "exclusive": true,
+          "idempotent": true,
+          "icon": "Pause"
+        },
+        {
+          "id": "incus.unfreeze",
+          "titleKey": "operations.unfreeze.title",
+          "scope": "resource",
+          "resource": "incus.instance",
+          "risk": "change",
+          "permission": "operate",
+          "hostAccess": "edit",
+          "dryRun": "describe",
+          "when": {
+            "settings": {
+              "enableIncus": true
+            }
+          },
+          "surfaces": {
+            "assistant": false,
+            "mcp": false
+          },
+          "exclusive": true,
+          "idempotent": true,
+          "icon": "Play"
+        },
+        {
+          "id": "incus.snapshot-create",
+          "titleKey": "operations.snapshot-create.title",
+          "scope": "resource",
+          "resource": "incus.instance",
+          "risk": "change",
+          "permission": "operate",
+          "hostAccess": "edit",
+          "dryRun": "describe",
+          "when": {
+            "settings": {
+              "enableIncus": true
+            }
+          },
+          "surfaces": {
+            "assistant": false,
+            "mcp": false
+          },
+          "exclusive": true,
+          "icon": "Camera",
+          "inputs": [
+            {
+              "key": "name",
+              "type": "string",
+              "labelKey": "operations.snapshot-create.name",
+              "pattern": "^([A-Za-z0-9][A-Za-z0-9_.-]{0,62})?$"
+            },
+            {
+              "key": "expiry",
+              "type": "select",
+              "labelKey": "operations.snapshot-create.expiry",
+              "default": "7d",
+              "options": [
+                {
+                  "value": "",
+                  "labelKey": "operations.snapshot-create.never"
+                },
+                {
+                  "value": "1d",
+                  "labelKey": "operations.snapshot-create.day"
+                },
+                {
+                  "value": "7d",
+                  "labelKey": "operations.snapshot-create.week"
+                },
+                {
+                  "value": "30d",
+                  "labelKey": "operations.snapshot-create.month"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "incus.snapshot-restore",
+          "titleKey": "operations.snapshot-restore.title",
+          "scope": "resource",
+          "resource": "incus.instance",
+          "risk": "destructive",
+          "permission": "operate",
+          "hostAccess": "edit",
+          "dryRun": "describe",
+          "when": {
+            "settings": {
+              "enableIncus": true
+            }
+          },
+          "surfaces": {
+            "assistant": false,
+            "mcp": false
+          },
+          "exclusive": true,
+          "icon": "History",
+          "inputs": [
+            {
+              "key": "snapshot",
+              "type": "string",
+              "labelKey": "operations.snapshot.label",
+              "required": true,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,62}$"
+            }
+          ]
+        },
+        {
+          "id": "incus.snapshot-delete",
+          "titleKey": "operations.snapshot-delete.title",
+          "scope": "resource",
+          "resource": "incus.instance",
+          "risk": "destructive",
+          "permission": "operate",
+          "hostAccess": "edit",
+          "dryRun": "describe",
+          "when": {
+            "settings": {
+              "enableIncus": true
+            }
+          },
+          "surfaces": {
+            "assistant": false,
+            "mcp": false
+          },
+          "exclusive": true,
+          "icon": "Trash2",
+          "inputs": [
+            {
+              "key": "snapshot",
+              "type": "string",
+              "labelKey": "operations.snapshot.label",
+              "required": true,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,62}$"
+            }
+          ]
+        }
+      ],
+      "resources": [
+        {
+          "id": "incus.instance",
+          "titleKey": "operations.instance.title",
+          "icon": "Boxes",
+          "list": "incus.list-instances",
+          "key": "key",
+          "name": "name",
+          "status": "status",
+          "tab": "incus",
+          "columns": [
+            {
+              "key": "type",
+              "titleKey": "operations.instance.type"
+            },
+            {
+              "key": "project",
+              "titleKey": "operations.instance.project"
+            },
+            {
+              "key": "address",
+              "titleKey": "operations.instance.address"
+            }
+          ],
+          "filters": ["status"]
+        }
+      ]
     }
   },
   "locales": "locales",

@@ -17,7 +17,7 @@ import type { IncusHostSettings } from "./settings.js";
 
 export class ProcessError extends Error {
   constructor(
-    readonly reason: "no-agent" | "stopped" | "failed",
+    readonly reason: "no-agent" | "stopped" | "frozen" | "failed",
     message: string,
   ) {
     super(message);
@@ -45,9 +45,14 @@ export class Processes {
     hostId: number,
     settings: IncusHostSettings,
     instance: InstanceRow,
-  ): Promise<{ processes: ProcessRow[]; truncated: boolean }> {
-    if (instance.status !== "Running") {
+  ): Promise<{ processes: ProcessRow[]; truncated: boolean; frozen: boolean }> {
+    const frozen = instance.status === "Frozen";
+    if (instance.status !== "Running" && !frozen) {
       throw new ProcessError("stopped", "The instance isn't running");
+    }
+    // a frozen VM's agent is paused too; a container is read from the host
+    if (frozen && instance.type === "virtual-machine") {
+      throw new ProcessError("frozen", "The VM is frozen");
     }
     let rows: ProcessRow[];
     let slot: Slot;
@@ -88,6 +93,7 @@ export class Processes {
     return {
       processes: withPercent.slice(0, MAX_PROCESSES),
       truncated: withPercent.length > MAX_PROCESSES,
+      frozen,
     };
   }
 

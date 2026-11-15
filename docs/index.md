@@ -1,6 +1,6 @@
 The Incus plugin shows the [Incus](https://linuxcontainers.org/incus/) containers and VMs on your hosts, under each host, over the SSH login Termix already has for it.
 
-This is an early version: it lists a host's instances with their usage, and shows each one's processes, logs, details and a shell. Actions come next.
+This is an early version: it lists a host's instances with their usage, and shows each one's processes, logs, details and a shell, and can start, stop, restart, freeze and snapshot them. Creating and editing instances comes next.
 
 ## Turn it on
 
@@ -19,15 +19,19 @@ Every instance in every project, with its state, address, CPU, memory, disk and 
 
 ## What's allowed
 
-Each host has a level, the most anyone may do with its instances:
+Each host has a level, and each level includes the ones before it:
 
-- **Read**: see instances, their usage, processes, logs and settings, with secret values hidden.
-- **Operate**: also start, stop, restart, freeze and snapshot them.
-- **Manage**: also create, delete, copy and rename them, and edit their config.
+| Level                        | Adds                                                                 |
+| ---------------------------- | -------------------------------------------------------------------- |
+| **Read only**                | instances, usage, processes, logs, details with secret values hidden |
+| **Read and operate**         | start, stop, restart, freeze, unfreeze, snapshots                    |
+| **Read, operate and manage** | create, delete, copy, rename, editing config (coming)                |
 
-People also need the matching permission (Read, Operate or Manage Incus instances), which only admins have by default. A host's **protected instances** are never stopped, restarted, frozen, restored or deleted from Termix, at any level.
+People need the matching permission too, and it works the same way: **Manage Incus instances** includes Operate and See, and **Operate Incus instances** includes See. All three are for admins only by default. One exception: Termix's own action runner (the command palette, automations) checks **Operate** by name, so a role that should use those needs Operate itself.
 
-Shells are separate: a host turns them on with Allow shells, and people need the Open shells permission. A root shell in an instance can read everything it holds, secrets included, so they're off by default.
+A host's **protected instances** are never stopped, restarted, frozen, restored or deleted from Termix, at any level, and get no shell.
+
+**Shells** are separate from the ladder on purpose: a host turns them on with Allow shells, and people need the **Open shells** permission and edit access to the host. A root shell in an instance can read everything it holds, secrets included, so they're off by default.
 
 ## Processes
 
@@ -47,6 +51,17 @@ Click an instance to see its processes: PID, user, CPU, memory, threads, how lon
 ## Details
 
 Config, devices and snapshots, from the same answer as the list. Values of `environment.*`, `cloud-init.*` and keys whose names look like secrets are hidden on the server.
+
+## Actions
+
+On hosts set to **Read and operate** or above, for people with the Operate permission and edit access to the host, an instance's header has:
+
+- **Start** when it's stopped; **Stop**, **Restart** and **Freeze** when it's running; **Unfreeze** and **Stop** when it's frozen. Stop and Restart wait up to 60 seconds for a clean shutdown.
+- On its Details tab, **Take a snapshot** (kept for 7 days), and **Restore** and **Delete** for each snapshot.
+
+Everything but Start and Unfreeze asks first. Protected instances only offer Start and Unfreeze, and the server refuses the rest. Each action goes in Termix's audit log.
+
+Stopping isn't always lasting: an instance set to start at boot starts again then. And on Incus's `dir` storage driver, a snapshot is a full copy of the instance.
 
 ## Shells
 

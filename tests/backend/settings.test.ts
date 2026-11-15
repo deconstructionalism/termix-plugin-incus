@@ -107,3 +107,16 @@ describe("command lines", () => {
     }
   });
 });
+
+describe("permission ladder", () => {
+  it("lets a higher permission stand in for a lower one", async () => {
+    const { hasLevel } = await import("../../src/backend/access.js");
+    const only = (p: string) => async (q: string) => q === p;
+    expect(await hasLevel(only("manage"), "read")).toBe(true);
+    expect(await hasLevel(only("manage"), "operate")).toBe(true);
+    expect(await hasLevel(only("operate"), "read")).toBe(true);
+    expect(await hasLevel(only("operate"), "manage")).toBe(false);
+    expect(await hasLevel(only("read"), "operate")).toBe(false);
+    expect(await hasLevel(only("shell"), "read")).toBe(false);
+  });
+});

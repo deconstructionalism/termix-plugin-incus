@@ -13,19 +13,19 @@
   "permissions": {
     "read": {
       "title": "See Incus instances",
-      "description": "See instances on hosts with Incus turned on: their usage, processes, logs and settings with secret values hidden."
+      "description": "See instances on hosts with Incus turned on: usage, processes, logs and details with secret values hidden."
     },
     "operate": {
       "title": "Operate Incus instances",
-      "description": "Start, stop, restart, freeze and snapshot instances, and end their processes, on hosts that allow it."
+      "description": "Start, stop, restart, freeze and snapshot instances on hosts that allow it. Includes everything See Incus instances allows. Termix's own actions (palette, automations) check this permission by name."
     },
     "shell": {
       "title": "Open shells in Incus instances",
-      "description": "A root shell inside instances, on hosts that allow it. A shell can read everything the instance holds, secrets included."
+      "description": "A root shell inside instances, on hosts that allow it. Separate from the others on purpose: a shell can read everything an instance holds, secrets included."
     },
     "manage": {
       "title": "Manage Incus instances",
-      "description": "Create, delete, copy and rename instances and edit their config, on hosts that allow it."
+      "description": "Create, delete, copy and rename instances and edit their config on hosts that allow it. Includes everything Operate allows, in the Incus tab."
     }
   },
   "settings": {
@@ -36,10 +36,10 @@
       },
       "level": {
         "label": "What's allowed",
-        "description": "The most anyone may do with this host's instances. People also need the matching permission.",
-        "read": "Read: see instances",
-        "operate": "Operate: also start, stop, restart and snapshot",
-        "manage": "Manage: also create, delete and edit config"
+        "description": "Each choice includes the ones above it. People also need the matching permission, and a higher permission includes the lower ones.",
+        "read": "Read only: see instances, processes, logs and details",
+        "operate": "Read and operate: also start, stop, restart, freeze and snapshot",
+        "manage": "Read, operate and manage: also create, delete, rename and edit config"
       },
       "protected": {
         "label": "Protected instances",
@@ -106,7 +106,9 @@
     "failed": "Couldn't read the processes",
     "truncated": "Showing the first 1000 processes.",
     "threads": "Threads",
-    "total": "{{processes}} processes, {{threads}} threads"
+    "total": "{{processes}} processes, {{threads}} threads",
+    "frozen": "The VM is frozen, so its processes can't be read. Unfreeze it first.",
+    "paused": "Frozen: these processes are paused until you unfreeze it."
   },
   "instance": {
     "processes": "Processes",
@@ -126,7 +128,8 @@
     "no-source": "This instance has no journal and no console output.",
     "unreadable": "This container's console log isn't available to this host's SSH user",
     "failed": "Couldn't read the logs",
-    "unreadableWhy": "App containers have no journal, and Incus keeps their console output in a file only root can read. Its API doesn't serve that file yet. Read it on the host as root:"
+    "unreadableWhy": "App containers have no journal, and Incus keeps their console output in a file only root can read. Its API doesn't serve that file yet. Read it on the host as root:",
+    "frozen": "The instance is frozen. Unfreeze it to read its logs."
   },
   "details": {
     "loading": "Reading details…",
@@ -149,5 +152,89 @@
     "closed": "The shell ended.",
     "reconnect": "Open a new shell",
     "noSocket": "The plugin's socket isn't reachable."
+  },
+  "operations": {
+    "list-instances": {
+      "title": "List Incus instances"
+    },
+    "start": {
+      "title": "Start instance"
+    },
+    "stop": {
+      "title": "Stop instance"
+    },
+    "restart": {
+      "title": "Restart instance"
+    },
+    "freeze": {
+      "title": "Freeze instance"
+    },
+    "unfreeze": {
+      "title": "Unfreeze instance"
+    },
+    "snapshot-create": {
+      "title": "Take a snapshot",
+      "name": "Name (leave empty for Incus's own)",
+      "expiry": "Delete it after",
+      "never": "Never",
+      "day": "1 day",
+      "week": "7 days",
+      "month": "30 days"
+    },
+    "snapshot-restore": {
+      "title": "Restore a snapshot"
+    },
+    "snapshot-delete": {
+      "title": "Delete a snapshot"
+    },
+    "snapshot": {
+      "label": "Snapshot"
+    },
+    "instance": {
+      "title": "Incus instance",
+      "type": "Type",
+      "project": "Project",
+      "address": "Address"
+    }
+  },
+  "actions": {
+    "working": "Working…",
+    "protected": "Protected on this host",
+    "failed": "That didn't work",
+    "start": {
+      "label": "Start"
+    },
+    "unfreeze": {
+      "label": "Unfreeze"
+    },
+    "stop": {
+      "label": "Stop",
+      "confirm": "Stop this instance?",
+      "description": "It shuts down cleanly, or is stopped after 60 seconds. An instance set to start at boot starts again then, and a config managed elsewhere may start it again too."
+    },
+    "restart": {
+      "label": "Restart",
+      "confirm": "Restart this instance?",
+      "description": "It shuts down cleanly, or is stopped after 60 seconds, then starts again."
+    },
+    "freeze": {
+      "label": "Freeze",
+      "confirm": "Freeze this instance?",
+      "description": "Its processes are paused where they are until you unfreeze it. Nothing is lost, but it doesn't answer meanwhile."
+    },
+    "snapshot-create": {
+      "label": "Take a snapshot"
+    },
+    "snapshot-restore": {
+      "label": "Restore",
+      "confirm": "Restore this snapshot?",
+      "description": "The instance goes back to how it was when the snapshot was taken. Everything since is lost."
+    },
+    "snapshot-delete": {
+      "label": "Delete",
+      "confirm": "Delete this snapshot?",
+      "description": "It can't be brought back."
+    },
+    "snapshotHint": "Kept for 7 days. On Incus's dir storage driver a snapshot is a full copy of the instance, so it takes a while and as much space again."
   }
 }

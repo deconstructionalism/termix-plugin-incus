@@ -356,6 +356,68 @@ describe("GET .../logs and .../details", () => {
   });
 });
 
+describe("frozen instances", () => {
+  const frozenList = JSON.stringify(
+    JSON.parse(listJson).map(
+      (i: { name: string; state: Record<string, unknown> }) =>
+        i.name === "termix" || i.name === "studio"
+          ? { ...i, status: "Frozen", state: { ...i.state, status: "Frozen" } }
+          : i,
+    ),
+  );
+  const ps = [
+    "100\n---",
+    "  4100 1000000 51200 3600 11 node /app/index.js",
+    "---",
+    "---",
+    "/proc/4100/cgroup:0::/lxc.payload.termix/init.scope",
+    "",
+  ].join("\n");
+
+  it("still lists a frozen container's processes, marked paused", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      respond: (c) =>
+        c.startsWith("incus list") ? { stdout: frozenList } : { stdout: ps },
+    });
+    const { body } = await get("/hosts/1/instances/default/termix/processes");
+    expect(body).toMatchObject({ ok: true, frozen: true });
+  });
+
+  it("says a frozen VM can't be read, without asking it", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      respond: (c) =>
+        c.startsWith("incus list") ? { stdout: frozenList } : { stdout: ps },
+    });
+    expect(
+      (await get("/hosts/1/instances/default/studio/processes")).body,
+    ).toMatchObject({
+      ok: false,
+      reason: "frozen",
+    });
+    expect(
+      (await get("/hosts/1/instances/default/studio/logs")).body,
+    ).toMatchObject({
+      ok: false,
+      reason: "frozen",
+    });
+    expect(commands.filter((c) => !c.startsWith("incus list"))).toEqual([]);
+  });
+
+  it("never runs journalctl in a frozen container", async () => {
+    const get = await start({
+      hostSettings: { 1: { enableIncus: true } },
+      respond: (c) =>
+        c.startsWith("incus list")
+          ? { stdout: frozenList }
+          : { stdout: "out\n" },
+    });
+    await get("/hosts/1/instances/default/termix/logs");
+    expect(commands.some((c) => c.includes("journalctl"))).toBe(false);
+  });
+});
+
 describe("parseVersion", () => {
   it("reads both lines, or neither", () => {
     expect(parseVersion(VERSION)).toEqual({ client: "7.0.1", server: "7.0.1" });

@@ -97,6 +97,26 @@
       ],
       "allowed": "any",
       "note": "Needs a real host running Incus; refusals are still checked"
+    },
+    "POST /plugin-api/incus/hosts/:hostId/instances/:project/:name/actions/:action": {
+      "access": "user",
+      "permission": "incus.read",
+      "resource": {
+        "kind": "host",
+        "min": "edit"
+      },
+      "params": {
+        "hostId": "host",
+        "project": "default",
+        "name": "authz-instance",
+        "action": "restart"
+      },
+      "body": {
+        "input": {}
+      },
+      "destructive": true,
+      "allowed": "any",
+      "note": "Runs through Termix operations, which check incus.operate and edit access; needs a real host"
     }
   }
 }

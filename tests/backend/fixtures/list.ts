@@ -25,6 +25,7 @@ export const instances = [
       "limits.memory": "1GiB",
       "user.api_token": SECRET,
       "volatile.eth0.hwaddr": "00:16:3e:00:00:01",
+      "volatile.idmap.base": "0",
       "volatile.idmap.current":
         '[{"Isuid":true,"Isgid":false,"Hostid":1000000,"Nsid":0,"Maprange":1000000000},{"Isuid":false,"Isgid":true,"Hostid":1000000,"Nsid":0,"Maprange":1000000000}]',
     },
