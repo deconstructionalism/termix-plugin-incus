@@ -95,3 +95,18 @@ It tries the host's chosen shell first, then `/run/current-system/sw/bin/bash` (
 ## Secret values
 
 Values of `environment.*` keys, and of keys whose names look like secrets (password, secret, token, key), never leave the Termix server. Command lines get the same treatment: a value after an argument whose name looks like a secret (`--password=...`, `-c password=...`, `TOKEN=...`) or a password in a URL is blanked. Hiding them keeps them off the page; it doesn't stop someone with a shell in the instance or on the host from reading them.
+
+## What the plugin may do in Termix
+
+The capabilities it asks for, and what each is for:
+
+| Capability           | What it's for                                                                                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `hosts:read`         | Find which of your hosts have Incus turned on, for the tab, the panel and the dashboard card.                     |
+| `ssh:connect`        | Run `incus` (and, for process lists, `ps` and reads of `/proc`) on those hosts, over Termix's own SSH connection. |
+| `credentials:use`    | Log in to the host with the login saved in Termix, without seeing the key or password.                            |
+| `network:serve`      | The plugin's own routes and the shell's socket, under `/plugin-api/incus/` and `/plugin-ws/incus/`.               |
+| `ui:surface`         | The Incus tab, the terminal panel, the dashboard card and the host settings.                                      |
+| `operations:provide` | Offer start, stop, restart, freeze and snapshots as Termix actions, for the palette and automations.              |
+
+It makes no other network calls, keeps no data of its own, and sends nothing anywhere: everything it shows is read from the host when you look.
