@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+
+### Changed
+
+- The dashboard card refreshes every 15 seconds, and at once when you come back to the page, instead of once a minute.
+
 ## 0.1.0
 
 ### Added

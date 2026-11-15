@@ -23,7 +23,8 @@ type HostSummary =
     }
   | { id: number; name: string; ok: false; error: string };
 
-// running instances per host, refreshed every minute while showing
+// running instances per host, refreshed while showing
+const REFRESH_MS = 15_000;
 export function createCard(app: TermixApp) {
   return function IncusHostsCard() {
     const { t } = useTranslation();
@@ -46,10 +47,16 @@ export function createCard(app: TermixApp) {
         }
       };
       void load();
-      const timer = setInterval(() => void load(), 60_000);
+      const timer = setInterval(() => void load(), REFRESH_MS);
+      // catch up at once when the page comes back into view
+      const onVisible = () => {
+        if (document.visibilityState === "visible") void load();
+      };
+      document.addEventListener("visibilitychange", onVisible);
       return () => {
         live = false;
         clearInterval(timer);
+        document.removeEventListener("visibilitychange", onVisible);
       };
     }, []);
 
