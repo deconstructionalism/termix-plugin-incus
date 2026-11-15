@@ -235,6 +235,6 @@
       "confirm": "Delete this snapshot?",
       "description": "It can't be brought back."
     },
-    "snapshotHint": "Kept for 7 days. On Incus's dir storage driver a snapshot is a full copy of the instance, so it takes a while and as much space again."
+    "snapshotHint": "Kept for 7 days. On Incus's dir storage driver a snapshot is a full copy of the instance: as much space again, and it can take a while for a large instance."
   }
 }

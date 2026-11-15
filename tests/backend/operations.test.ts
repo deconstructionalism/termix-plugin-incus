@@ -70,14 +70,20 @@ type Handler = {
 function setup(settings: Record<string, unknown>) {
   const handlers = new Map<string, Handler>();
   const commands: string[] = [];
+  const stdins: unknown[] = [];
   const ctx = {
     settings: { getAll: async () => settings },
     operations: {
       register: (id: string, handler: Handler) => handlers.set(id, handler),
     },
     ssh: {
-      exec: async (_host: unknown, command: string) => {
+      exec: async (
+        _host: unknown,
+        command: string,
+        options: { stdin?: unknown },
+      ) => {
         commands.push(command);
+        stdins.push(options?.stdin);
         return {
           stdout: command.startsWith("incus list") ? listJson : "",
           stderr: "",
@@ -98,7 +104,7 @@ function setup(settings: Record<string, unknown>) {
       signal: new AbortController().signal,
       log: () => {},
     });
-  return { run, commands, handlers };
+  return { run, commands, handlers, stdins };
 }
 
 describe("operations", () => {
@@ -112,6 +118,12 @@ describe("operations", () => {
     expect(commands.at(-1)).toBe(
       "incus restart --project default --timeout 60 -- studio",
     );
+  });
+
+  it("closes standard input, since incus snapshot create waits on it", async () => {
+    const { run, stdins } = setup(operate);
+    await run("snapshot-create", "default/studio", { expiry: "7d" });
+    expect(stdins.every((s) => s === "")).toBe(true);
   });
 
   it("refuses on a read host", async () => {

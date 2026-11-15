@@ -136,7 +136,12 @@ export function registerRoutes(
       const result = await ctx.ssh.exec(
         hostId,
         incus(settings.incusCommand, ["version"]),
-        { purpose: "incus", timeoutMs: 15_000, maxOutputBytes: 4096 },
+        {
+          purpose: "incus",
+          stdin: "",
+          timeoutMs: 15_000,
+          maxOutputBytes: 4096,
+        },
       );
       if (result.code !== 0) {
         return {

@@ -83,7 +83,12 @@ export class InstanceLists {
         "--format",
         "json",
       ]),
-      { purpose: "incus", timeoutMs: 30_000, maxOutputBytes: MAX_OUTPUT },
+      {
+        purpose: "incus",
+        stdin: "",
+        timeoutMs: 30_000,
+        maxOutputBytes: MAX_OUTPUT,
+      },
     );
     if (result.truncated) {
       throw new ListError("Incus's answer was too large to read");

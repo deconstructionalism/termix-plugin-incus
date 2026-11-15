@@ -33,6 +33,7 @@ export async function readLogs(
   const run = (command: string) =>
     ctx.ssh.exec(hostId, command, {
       purpose: "incus",
+      stdin: "",
       timeoutMs: 20_000,
       maxOutputBytes: 1024 * 1024,
     });

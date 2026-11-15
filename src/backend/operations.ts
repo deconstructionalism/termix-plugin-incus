@@ -168,6 +168,7 @@ export async function performAction(
   log(command);
   const result = await ctx.ssh.exec(hostId, command, {
     purpose: "incus",
+    stdin: "",
     timeoutMs: 150_000,
     maxOutputBytes: 64 * 1024,
   });
