@@ -410,6 +410,11 @@ export function registerRoutes(
       await answer(res, async () => {
         const action = String(req.params.action) as Action;
         if (!ACTIONS.includes(action)) throw new Refusal(400, "Not an action");
+        const step = (what: string) =>
+          ctx.log.info(
+            `action ${action} ${req.params.project}/${req.params.name}: ${what}`,
+          );
+        step("received");
         const found = await findInstance(req);
         if ("ok" in found) return found;
         const input =
@@ -429,6 +434,7 @@ export function registerRoutes(
           throw new Refusal(403, "Operating needs edit access to the host");
         }
         const resourceKey = `${found.instance.project}/${found.instance.name}`;
+        step("checks passed");
         try {
           const summary = await performAction(
             ctx,
@@ -436,7 +442,9 @@ export function registerRoutes(
             action,
             { hostId: found.hostId, resourceKey },
             input,
+            (command) => step(`running ${command}`),
           );
+          step("done, writing audit");
           await ctx.audit.record({
             action: `incus.${action}`,
             resourceType: "incus-instance",
@@ -445,6 +453,7 @@ export function registerRoutes(
             details: JSON.stringify({ hostId: found.hostId, input }),
             success: true,
           });
+          step("audit written");
           return { ok: true, summary };
         } catch (error) {
           const message =

@@ -38,14 +38,21 @@ export function useInstanceAction(
     setError(null);
     setDone(null);
     try {
-      const { data } = await app.api.post<Answer>(`${base}/actions/${action}`, {
-        input,
-      });
+      const { data } = await Promise.race([
+        app.api.post<Answer>(`${base}/actions/${action}`, { input }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), 180_000),
+        ),
+      ]);
       if ("error" in data) setError(data.error);
       else setDone(data.summary);
       onDone();
-    } catch {
-      setError("request failed");
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message === "timeout"
+          ? "No answer after 3 minutes. It may still finish; check the instance before trying again."
+          : "request failed",
+      );
     } finally {
       setBusy(null);
     }
