@@ -176,7 +176,7 @@ describe(`${manifest.id} activate`, () => {
     expect(await screen.findByText("Started termix")).toBeTruthy();
     expect(post).toHaveBeenCalledWith(
       "/hosts/1/instances/default/termix/actions/restart",
-      { input: {} },
+      { input: {}, confirmed: true },
     );
   });
 

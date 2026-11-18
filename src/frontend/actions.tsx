@@ -33,13 +33,17 @@ export function useInstanceAction(
   const run = async (
     action: ActionName,
     input: Record<string, unknown> = {},
+    confirmed = false,
   ) => {
     setBusy(action);
     setError(null);
     setDone(null);
     try {
       const { data } = await Promise.race([
-        app.api.post<Answer>(`${base}/actions/${action}`, { input }),
+        app.api.post<Answer>(`${base}/actions/${action}`, {
+          input,
+          confirmed,
+        }),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("timeout")), 180_000),
         ),
@@ -88,19 +92,19 @@ export function ActionBar({
   status: string;
   isProtected: boolean;
   busy: ActionName | null;
-  run: (action: ActionName) => void;
+  run: (action: ActionName, confirmed: boolean) => void;
 }) {
   const { t } = useTranslation();
   const confirm = useConfirm();
   const ask = async (action: ActionName) => {
-    if (action === "start" || action === "unfreeze") return run(action);
+    if (action === "start" || action === "unfreeze") return run(action, false);
     const ok = await confirm({
       title: t(`actions.${action}.confirm`),
       description: t(`actions.${action}.description`),
       confirmLabel: t(`actions.${action}.label`),
       destructive: action === "stop",
     });
-    if (ok) run(action);
+    if (ok) run(action, true);
   };
   const actions = availableActions(status, isProtected);
   return (

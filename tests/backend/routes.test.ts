@@ -673,3 +673,92 @@ describe("parseVersion", () => {
     expect(parseVersion("")).toEqual({ client: null, server: null });
   });
 });
+
+describe("POST .../actions/:action", () => {
+  const operateHost = {
+    enableIncus: true,
+    level: "operate",
+    protected: "studio",
+  };
+  const respond = (c: string) =>
+    c.startsWith("incus list") ? { stdout: listJson } : { stdout: "" };
+  const post = async (path: string, body: unknown) => {
+    const response = await fetch(
+      `http://127.0.0.1:${(server!.address() as { port: number }).port}${path}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    return { status: response.status, body: await response.json() };
+  };
+
+  it("runs the button through Termix's operation runner", async () => {
+    await start({
+      permissions: ["incus.operate"],
+      hostSettings: { 1: operateHost },
+      respond,
+    });
+    const runs: unknown[] = [];
+    const run = mock.ctx.operations.run;
+    mock.ctx.operations.run = (async (id: string, options: never) => {
+      runs.push({ id, options });
+      return run(id, options);
+    }) as never;
+    const answer = await post(
+      "/hosts/1/instances/default/termix/actions/snapshot-delete",
+      { input: { snapshot: "snap0" }, confirmed: true },
+    );
+    expect(answer.body).toEqual({
+      ok: true,
+      summary: "Deleted a snapshot of termix",
+    });
+    expect(runs).toEqual([
+      {
+        id: "incus.snapshot-delete",
+        options: {
+          hostId: 1,
+          resourceKey: "default/termix",
+          input: { snapshot: "snap0" },
+          confirmed: true,
+        },
+      },
+    ]);
+    expect(commands).toContain(
+      "incus snapshot delete --project default -- termix snap0",
+    );
+  });
+
+  it("passes on why the runner or the action refused", async () => {
+    await start({
+      permissions: ["incus.operate"],
+      hostSettings: { 1: operateHost },
+      respond,
+    });
+    expect(
+      (await post("/hosts/1/instances/default/studio/actions/stop", {})).body,
+    ).toEqual({ ok: false, error: "studio is protected on this host" });
+    mock.ctx.operations.run = (async () => ({
+      runId: "r1",
+      status: "failed",
+      error: "This needs the incus.operate permission",
+    })) as never;
+    expect(
+      (await post("/hosts/1/instances/default/termix/actions/start", {})).body,
+    ).toEqual({ ok: false, error: "This needs the incus.operate permission" });
+    expect(commands.some((c) => c.startsWith("incus stop"))).toBe(false);
+  });
+
+  it("refuses an unknown action before asking the runner", async () => {
+    await start({
+      permissions: ["incus.operate"],
+      hostSettings: { 1: operateHost },
+      respond,
+    });
+    expect(
+      (await post("/hosts/1/instances/default/termix/actions/delete", {}))
+        .status,
+    ).toBe(400);
+  });
+});

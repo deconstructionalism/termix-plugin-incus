@@ -27,7 +27,7 @@ Each host has a level, and each level includes the ones before it:
 | **Read and operate**         | start, stop, restart, freeze, unfreeze, snapshots                    |
 | **Read, operate and manage** | create, delete, copy, rename, editing config (coming)                |
 
-People need the matching permission too, and it works the same way: **Manage Incus instances** includes Operate and See, and **Operate Incus instances** includes See. All three are for admins only by default. One exception: Termix's own action runner (the command palette, automations) checks **Operate** by name, so a role that should use those needs Operate itself.
+People need the matching permission too, and it works the same way: **Manage Incus instances** includes Operate and See, and **Operate Incus instances** includes See. All three are for admins only by default. One exception: Operate actions go through Termix's own action runner (the buttons here, the command palette, automations), which checks **Operate** by name, so a role that should use them needs Operate itself.
 
 A host's **protected instances** are never stopped, restarted, frozen, restored or deleted from Termix, at any level, and get no shell.
 
@@ -64,7 +64,7 @@ On hosts set to **Read and operate** or above, for people with the Operate permi
 - **Start** when it's stopped; **Stop**, **Restart** and **Freeze** when it's running; **Unfreeze** and **Stop** when it's frozen. Stop and Restart wait up to 60 seconds for a clean shutdown.
 - On its Details tab, **Take a snapshot** (kept for 7 days), and **Restore** and **Delete** for each snapshot.
 
-Everything but Start and Unfreeze asks first. Protected instances only offer Start and Unfreeze, and the server refuses the rest. Each action goes in Termix's audit log.
+Everything but Start and Unfreeze asks first. Protected instances only offer Start and Unfreeze, and the server refuses the rest. Each action runs through Termix's action runner, so it shows in Operations' run history and goes in Termix's audit log, the same as from the palette or an automation. If Termix's rules say an action needs approval, the button says so and it waits in Operations.
 
 Stopping isn't always lasting: an instance set to start at boot starts again then. And on Incus's `dir` storage driver, a snapshot is a full copy of the instance.
 

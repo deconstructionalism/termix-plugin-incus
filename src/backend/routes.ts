@@ -3,7 +3,7 @@ import type { PluginContext } from "@termix-ssh/plugin-sdk/backend";
 import { hasLevel, Refusal, requireHost } from "./access.js";
 import { incus } from "./commands.js";
 import { InstanceLists, ListError } from "./list.js";
-import { ACTIONS, performAction, type Action } from "./operations.js";
+import { ACTIONS, type Action } from "./operations.js";
 import { Processes, ProcessError } from "./process-service.js";
 import type { InstanceRow } from "./instances.js";
 import { readLogs } from "./logs.js";
@@ -407,13 +407,16 @@ export function registerRoutes(
    *             properties:
    *               input:
    *                 type: object
+   *               confirmed:
+   *                 type: boolean
+   *                 description: The person agreed to it, needed for restoring and deleting snapshots
    *     responses:
    *       200:
-   *         description: How the run went
+   *         description: How the run went, or why Termix's runner refused it
    *       400:
    *         description: Not an action, host id or instance name
    *       403:
-   *         description: No permission, or Incus is off for the host
+   *         description: No read permission, or Incus is off for the host
    *       404:
    *         description: No such host or instance
    */
@@ -423,63 +426,39 @@ export function registerRoutes(
       await answer(res, async () => {
         const action = String(req.params.action) as Action;
         if (!ACTIONS.includes(action)) throw new Refusal(400, "Not an action");
-        const step = (what: string) =>
-          ctx.log.info(
-            `action ${action} ${req.params.project}/${req.params.name}: ${what}`,
-          );
-        step("received");
         const found = await findInstance(req);
         if ("ok" in found) return found;
         const input =
           req.body?.input && typeof req.body.input === "object"
             ? (req.body.input as Record<string, unknown>)
             : {};
-        // Termix's operation runner can't hand a plugin process its abort
-        // signal yet, so the button runs the action here, with the person's
-        // checks the runner would have made.
-        if (!(await hasLevel((p) => ctx.rbac.has(p), "operate"))) {
-          throw new Refusal(
-            403,
-            "You don't have permission to operate instances",
-          );
-        }
-        if (!(await ctx.hosts.checkAccess(found.hostId, "edit")).hasAccess) {
-          throw new Refusal(403, "Operating needs edit access to the host");
-        }
-        const resourceKey = `${found.instance.project}/${found.instance.name}`;
-        step("checks passed");
+        // Termix's runner checks the person, the host access and the confirm,
+        // and writes the run history and the audit log
         try {
-          const summary = await performAction(
-            ctx,
-            lists,
-            action,
-            { hostId: found.hostId, resourceKey },
+          const outcome = await ctx.operations.run(`incus.${action}`, {
+            hostId: found.hostId,
+            resourceKey: `${found.instance.project}/${found.instance.name}`,
             input,
-            (command) => step(`running ${command}`),
-          );
-          step("done, writing audit");
-          await ctx.audit.record({
-            action: `incus.${action}`,
-            resourceType: "incus-instance",
-            resourceId: resourceKey,
-            resourceName: found.instance.name,
-            details: JSON.stringify({ hostId: found.hostId, input }),
-            success: true,
+            confirmed: req.body?.confirmed === true,
           });
-          step("audit written");
-          return { ok: true, summary };
+          if (outcome.status === "success") {
+            return { ok: true, summary: outcome.summary ?? "" };
+          }
+          if (outcome.status === "pending_approval") {
+            return {
+              ok: false,
+              error: "This is waiting for someone to approve it in Operations",
+            };
+          }
+          return {
+            ok: false,
+            error: outcome.error || `incus ${action} ${outcome.status}`,
+          };
         } catch (error) {
-          const message =
-            error instanceof Error ? error.message : String(error);
-          await ctx.audit.record({
-            action: `incus.${action}`,
-            resourceType: "incus-instance",
-            resourceId: resourceKey,
-            resourceName: found.instance.name,
-            success: false,
-            errorMessage: message,
-          });
-          return { ok: false, error: message };
+          return {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
         }
       });
     },

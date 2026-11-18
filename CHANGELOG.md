@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+### Changed
+
+- The Operate buttons (Start, Stop, Restart, Freeze, Unfreeze and the snapshot ones) run through Termix's action runner, now that it can hand actions to a plugin process. They show in Operations' run history, follow Termix's approval rules, and need the Operate permission itself: Manage alone no longer covers them.
+
 ## 0.2.0
 
 ### Added

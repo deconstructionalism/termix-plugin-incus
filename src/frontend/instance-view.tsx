@@ -188,7 +188,7 @@ export function InstanceView({
             status={status}
             isProtected={isProtected}
             busy={action.busy}
-            run={(a) => void action.run(a)}
+            run={(a, confirmed) => void action.run(a, {}, confirmed)}
           />
         ) : null
       }
@@ -494,7 +494,11 @@ function DetailsPanel({
   snapshots: {
     busy: ActionName | null;
     isProtected: boolean;
-    run: (action: ActionName, input?: Record<string, unknown>) => Promise<void>;
+    run: (
+      action: ActionName,
+      input?: Record<string, unknown>,
+      confirmed?: boolean,
+    ) => Promise<void>;
   } | null;
 }) {
   const { t } = useTranslation();
@@ -506,7 +510,7 @@ function DetailsPanel({
       description: t(`actions.${action}.description`),
       confirmLabel: t(`actions.${action}.label`),
     });
-    if (ok) await snapshots.run(action, { snapshot });
+    if (ok) await snapshots.run(action, { snapshot }, true);
   };
   const { answer, failed } = useInstanceApi<DetailsAnswer>(app, path, null);
   if (failed || (answer && "error" in answer)) {

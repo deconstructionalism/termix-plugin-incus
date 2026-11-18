@@ -144,8 +144,8 @@ async function operable(
   return { hostId, settings, instance };
 }
 
-// Shared by the Termix operation and the plugin's own route. Checks the host,
-// the instance, protection and snapshots; the caller checks the person.
+// Checks the host, the instance, protection and snapshots; Termix's runner
+// checks the person before it gets here.
 export async function performAction(
   ctx: PluginContext,
   lists: InstanceLists,

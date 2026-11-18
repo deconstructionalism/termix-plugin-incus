@@ -1,7 +1,7 @@
 {
   "id": "incus",
   "name": "Incus",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Incus containers and VMs on your hosts over SSH: usage, processes, logs, a shell and actions, with per-host levels and secret values kept out of view.",
   "author": {
     "name": "deconstructionalism",

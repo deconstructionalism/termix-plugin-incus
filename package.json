@@ -1,7 +1,7 @@
 {
   "name": "termix-plugin-incus",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "build": "termix-plugin build",
